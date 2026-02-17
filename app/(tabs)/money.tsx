@@ -16,7 +16,6 @@ import { startOfMonthISO, todayISO } from '@/lib/date';
 // import { SubscriptionWasteCard } from '@/components/SubscriptionWasteCard';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-import { extractText as extractPdfText, isAvailable as isPdfExtractAvailable } from 'expo-pdf-text-extract';
 import { parseStatement, parseStatementFromFileContent } from '@/lib/parseStatement';
 import { generateId } from '@/lib/id';
 import type { LifeItem, Subscription, Transaction } from '@/lib/types';
@@ -224,16 +223,11 @@ export default function MoneyScreen() {
 
       let content: string;
       if (isPdf) {
-        if (isPdfExtractAvailable()) {
-          content = await extractPdfText(uri);
-        } else {
-          setImportMessage('PDF text extraction requires a development build. Use CSV or text file, or paste statement.');
-          setTimeout(() => setImportMessage(null), 4000);
-          return;
-        }
-      } else {
-        content = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.UTF8 });
+        setImportMessage('PDF import is not supported in this build. Use CSV or text file, or paste your statement below.');
+        setTimeout(() => setImportMessage(null), 5000);
+        return;
       }
+      content = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.UTF8 });
 
       const parsed = parseStatementFromFileContent(content);
       if (parsed.length === 0) {
