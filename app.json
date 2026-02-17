@@ -4,21 +4,25 @@
     "slug": "klario",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/bear.png",
+    "icon": "./assets/images/bear-favicon.jpg",
     "scheme": "klario",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/bear.png",
+      "image": "./assets/images/bear-favicon.jpg",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.amin123786.klario",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/bear.png",
+        "foregroundImage": "./assets/images/bear-favicon.jpg",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -27,7 +31,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/bear.png"
+      "favicon": "./assets/images/bear-favicon.jpg"
     },
     "plugins": [
       "expo-router",
@@ -35,6 +39,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "84e621c6-8920-4b19-8266-58062883cd41"
+      }
+    },
+    "owner": "amin123786"
   }
 }
