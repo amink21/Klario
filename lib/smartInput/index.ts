@@ -1,5 +1,12 @@
 export { parseSmartInput, type ParseSmartInputOut } from './parseSmartInput';
 export {
+  parseSmartInput as parseSmartInputDeterministic,
+  type ParsedResult as DeterministicParsedResult,
+  type Intent as DeterministicIntent,
+  type Category as DeterministicCategory,
+  type Cadence as DeterministicCadence,
+} from './deterministicParser';
+export {
   executeSmartActions,
   type ExecuteResult,
   type CreateLifeItemFn,

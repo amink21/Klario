@@ -12,7 +12,7 @@ const schema = z.object({
   title: z.string().min(1, 'Title required'),
   category: z.string().min(1, 'Category required'),
   amountCents: z.union([z.string(), z.number()]).optional(),
-  cadence: z.enum(['one_time', 'monthly', 'yearly']),
+  cadence: z.enum(['one_time', 'daily', 'monthly', 'yearly']),
   nextDueISO: z.string().min(1, 'Due date required'),
   dueTime: z.string().optional(),
   remindDaysBefore: z.number().min(0).max(365),
@@ -28,9 +28,11 @@ interface AddItemSheetProps {
   onUpdate?: (id: string, patch: Partial<LifeItem>) => void;
   /** Pre-fill title when adding (e.g. from quick-add when parse failed). */
   initialTitle?: string;
+  /** Default remind days before for new items (from settings). */
+  defaultRemindDaysBefore?: number;
 }
 
-export function AddItemSheet({ bottomSheetRef, onSubmit, editItem, onUpdate, initialTitle }: AddItemSheetProps) {
+export function AddItemSheet({ bottomSheetRef, onSubmit, editItem, onUpdate, initialTitle, defaultRemindDaysBefore = 1 }: AddItemSheetProps) {
   const colorScheme = useColorScheme();
   const theme = colors[colorScheme ?? 'light'];
 
@@ -38,6 +40,7 @@ export function AddItemSheet({ bottomSheetRef, onSubmit, editItem, onUpdate, ini
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -47,7 +50,7 @@ export function AddItemSheet({ bottomSheetRef, onSubmit, editItem, onUpdate, ini
       cadence: 'monthly',
       nextDueISO: new Date().toISOString().slice(0, 10),
       dueTime: '',
-      remindDaysBefore: 7,
+      remindDaysBefore: defaultRemindDaysBefore,
     },
   });
 
@@ -71,11 +74,14 @@ export function AddItemSheet({ bottomSheetRef, onSubmit, editItem, onUpdate, ini
         cadence: 'monthly',
         nextDueISO: new Date().toISOString().slice(0, 10),
         dueTime: '',
-        remindDaysBefore: 7,
+        remindDaysBefore: defaultRemindDaysBefore,
         notes: '',
       });
     }
-  }, [editItem, initialTitle, reset]);
+  }, [editItem, initialTitle, defaultRemindDaysBefore, reset]);
+
+  const dueTimeValue = watch('dueTime');
+  const hasDueTime = Boolean(dueTimeValue?.trim());
 
   const normalizeDueTime = (raw: string | undefined): string | undefined => {
     const s = raw?.trim();
@@ -209,7 +215,7 @@ export function AddItemSheet({ bottomSheetRef, onSubmit, editItem, onUpdate, ini
               <View style={styles.field}>
                 <Text style={[styles.label, { color: theme.textSecondary }]}>Cadence</Text>
                 <View style={styles.pills}>
-                  {(['one_time', 'monthly', 'yearly'] as const).map((c) => (
+                  {(['one_time', 'daily', 'monthly', 'yearly'] as const).map((c) => (
                     <TouchableOpacity
                       key={c}
                       style={[
@@ -273,6 +279,11 @@ export function AddItemSheet({ bottomSheetRef, onSubmit, editItem, onUpdate, ini
             render={({ field: { onChange, value } }) => (
               <View style={styles.field}>
                 <Text style={[styles.label, { color: theme.textSecondary }]}>Remind (days before)</Text>
+                <Text style={[styles.hint, { color: theme.textTertiary }]}>
+                  {hasDueTime
+                    ? "With a time set above, you're reminded 30 min before that time. Days before is used if you remove the time."
+                    : 'Notification at 09:00 that many days before the due date.'}
+                </Text>
                 <View style={styles.pills}>
                   {[0, 3, 7, 14, 30].map((d) => (
                     <TouchableOpacity
@@ -342,6 +353,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
   },
   pillText: { fontSize: 14, fontWeight: '500' },
+  hint: { fontSize: 12, marginTop: spacing.xs, marginBottom: spacing.sm },
   error: { fontSize: 12, marginTop: spacing.xs },
   button: {
     padding: spacing.lg,

@@ -5,7 +5,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { useStore } from '@/lib/store';
 import { colors, spacing, radius } from '@/constants/Theme';
 import { UpcomingList } from '@/components/UpcomingList';
-import { SmartInputBar } from '@/components/SmartInputBar';
+import { SmartInputBar, type InputBoxStatus } from '@/components/SmartInputBar';
 import { SmartInputReviewSheet } from '@/components/SmartInputReviewSheet';
 import { Toast } from '@/components/Toast';
 import { AddItemSheet } from '@/components/AddItemSheet';
@@ -39,8 +39,9 @@ export default function TodayScreen() {
   const [draftQuickAdd, setDraftQuickAdd] = React.useState<string | null>(null);
   const [viewDateISO, setViewDateISO] = React.useState<string>(() => todayISO());
   const [datePickerOpen, setDatePickerOpen] = React.useState(false);
-  const [comingUpDays, setComingUpDays] = React.useState<7 | 14 | 30>(14);
+  const [comingUpDays, setComingUpDays] = React.useState<0 | 7 | 14 | 30>(14);
   const [smartInputLoading, setSmartInputLoading] = React.useState(false);
+  const [inputBoxStatus, setInputBoxStatus] = React.useState<InputBoxStatus>(null);
   const [reviewParsed, setReviewParsed] = React.useState<import('@/lib/ai/schemas').SmartInputParseResult | null>(null);
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
   const [upcomingExpanded, setUpcomingExpanded] = React.useState(false);
@@ -79,7 +80,8 @@ export default function TodayScreen() {
         item.title,
         item.nextDueISO,
         item.remindDaysBefore,
-        item.dueTime ?? undefined
+        item.dueTime ?? undefined,
+        item.remindMinutesBefore ?? 30
       );
     }
     const newItem: LifeItem = {
@@ -108,7 +110,7 @@ export default function TodayScreen() {
     if (patch.status !== 'cancelled' && remindDays > 0) {
       if (existing.notificationId) await cancelScheduledNotification(existing.notificationId);
       notificationId =
-        (await scheduleDueReminder(id, patch.title ?? existing.title, nextDue, remindDays, patch.dueTime ?? existing.dueTime ?? undefined)) ?? undefined;
+        (await scheduleDueReminder(id, patch.title ?? existing.title, nextDue, remindDays, patch.dueTime ?? existing.dueTime ?? undefined, patch.remindMinutesBefore ?? existing.remindMinutesBefore ?? 30)) ?? undefined;
     }
     await updateLifeItem(id, { ...patch, notificationId: notificationId ?? null });
     const updated = items.map((i) => (i.id === id ? { ...i, ...patch, notificationId } : i));
@@ -136,7 +138,8 @@ export default function TodayScreen() {
             item.title,
             item.nextDueISO,
             item.remindDaysBefore,
-            item.dueTime ?? undefined
+            item.dueTime ?? undefined,
+            item.remindMinutesBefore ?? 30
           );
         }
         const withNotif = { ...item, notificationId: notificationId ?? undefined };
@@ -149,16 +152,18 @@ export default function TodayScreen() {
         await setSubscriptions([...subscriptions, sub]);
       },
     });
-    if (result.toastMessage) setToastMessage(result.toastMessage);
+    // Toast not shown for add success — result is shown in the input bar
     await load();
     return result;
   };
 
   const handleSmartInputSubmit = async (text: string) => {
     setSmartInputLoading(true);
+    setInputBoxStatus('thinking');
     try {
       const outcome = await handleSmartInput(text, 'today');
       if (outcome.action === 'error') {
+        setInputBoxStatus(null);
         Alert.alert('Couldn’t parse', outcome.error + '\n\nOpen Add Item to enter manually.');
         setDraftQuickAdd(text);
         setSelectedItem(null);
@@ -166,6 +171,7 @@ export default function TodayScreen() {
         return;
       }
       if (outcome.action === 'review') {
+        setInputBoxStatus(null);
         setReviewParsed(outcome.parsed);
         reviewSheetRef.current?.snapToIndex(0);
         return;
@@ -179,7 +185,10 @@ export default function TodayScreen() {
         outcome.parsed.spending != null &&
         (outcome.parsed.spending.amountCents ?? 0) > 0;
       await runExecute(outcome.parsed, createReminder, createSpending);
-      if (outcome.toastMessage) setToastMessage(outcome.toastMessage);
+      const resultStatus: InputBoxStatus =
+        createReminder && createSpending ? 'both' : createReminder ? 'reminder' : 'transaction';
+      setInputBoxStatus(resultStatus);
+      setTimeout(() => setInputBoxStatus(null), 2000);
     } finally {
       setSmartInputLoading(false);
     }
@@ -192,10 +201,18 @@ export default function TodayScreen() {
   }) => {
     await runExecute(payload.parsed, payload.createReminder, payload.createSpending);
     setReviewParsed(null);
+    const resultStatus: InputBoxStatus =
+      payload.createReminder && payload.createSpending
+        ? 'both'
+        : payload.createReminder
+          ? 'reminder'
+          : 'transaction';
+    setInputBoxStatus(resultStatus);
+    setTimeout(() => setInputBoxStatus(null), 2000);
   };
 
   const settings = useStore((s) => s.settings);
-  const defaultRemindDaysBefore = settings?.defaultRemindDaysBefore ?? 7;
+  const defaultRemindDaysBefore = settings?.defaultRemindDaysBefore ?? 1;
 
   return (
     <TabScreenAnimation>
@@ -227,6 +244,7 @@ export default function TodayScreen() {
             context="today"
             onSubmit={handleSmartInputSubmit}
             loading={smartInputLoading}
+            boxStatus={inputBoxStatus}
           />
         </View>
 
@@ -256,6 +274,17 @@ export default function TodayScreen() {
           </TouchableOpacity>
         </View>
         <View style={styles.filterRow}>
+          <TouchableOpacity
+            style={[
+              styles.filterPill,
+              { backgroundColor: comingUpDays === 0 ? theme.accentPill : theme.pillBg },
+            ]}
+            onPress={() => setComingUpDays(0)}
+          >
+            <Text style={[styles.filterPillText, { color: comingUpDays === 0 ? theme.text : theme.textSecondary }]}>
+              Today
+            </Text>
+          </TouchableOpacity>
           {([7, 14, 30] as const).map((days) => (
             <TouchableOpacity
               key={days}

@@ -48,7 +48,7 @@ export function SummaryPillBar(props: BottomTabBarProps) {
     <View
       style={[
         styles.wrapper,
-        { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, spacing.sm) },
+        { backgroundColor: 'transparent', paddingBottom: Math.max(insets.bottom, spacing.sm) },
       ]}
     >
       <View style={[styles.pill, { backgroundColor: theme.surfaceElevated ?? theme.surface }]}>

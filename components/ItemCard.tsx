@@ -32,7 +32,7 @@ export function ItemCard({ item, onPress }: ItemCardProps) {
             {item.title}
           </Text>
           <Text style={[styles.meta, { color: theme.textTertiary }]}>
-            {item.category} · {formatDueIn(item.nextDueISO)}
+            {item.category} · {formatDueIn(item.nextDueISO, item.dueTime)}
             {item.dueTime ? ` at ${formatTimeHHMM(item.dueTime)}` : ''}
             {item.amountCents != null && ` · ${formatCurrency(item.amountCents)}`}
           </Text>

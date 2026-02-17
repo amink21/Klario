@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { useForm, Controller } from 'react-hook-form';
@@ -13,7 +13,7 @@ const schema = z.object({
   title: z.string().min(1, 'Title required'),
   amountCents: z.union([
     z.string().min(1, 'Amount required'),
-    z.number().positive(),
+    z.number(),
   ]),
   category: z.string().min(1, 'Category required'),
   dateISO: z.string().min(1, 'Date required'),
@@ -25,9 +25,12 @@ type FormData = z.infer<typeof schema>;
 interface AddTransactionSheetProps {
   bottomSheetRef: React.RefObject<BottomSheet | null>;
   onSubmit: (tx: Omit<Transaction, 'id'>) => void;
+  editTransaction?: Transaction | null;
+  onUpdate?: (tx: Transaction) => void;
+  onClose?: () => void;
 }
 
-export function AddTransactionSheet({ bottomSheetRef, onSubmit }: AddTransactionSheetProps) {
+export function AddTransactionSheet({ bottomSheetRef, onSubmit, editTransaction, onUpdate, onClose }: AddTransactionSheetProps) {
   const colorScheme = useColorScheme();
   const theme = colors[colorScheme ?? 'light'];
 
@@ -47,22 +50,54 @@ export function AddTransactionSheet({ bottomSheetRef, onSubmit }: AddTransaction
     },
   });
 
+  useEffect(() => {
+    if (editTransaction) {
+      reset({
+        title: editTransaction.title,
+        amountCents: String(Math.abs(editTransaction.amountCents) / 100),
+        category: editTransaction.category,
+        dateISO: editTransaction.dateISO,
+        merchant: editTransaction.merchant ?? '',
+      });
+    } else {
+      reset({
+        title: '',
+        amountCents: '',
+        category: '',
+        dateISO: todayISO(),
+        merchant: '',
+      });
+    }
+  }, [editTransaction, reset]);
+
   const onFormSubmit = useCallback(
     (data: FormData) => {
-      const amountCents = Math.round(
+      const rawAmount = Math.round(
         Number(String(data.amountCents).replace(/[^0-9.-]/g, '')) * 100
       );
-      onSubmit({
-        title: data.title,
-        amountCents,
-        category: data.category,
-        dateISO: data.dateISO,
-        merchant: data.merchant || undefined,
-      });
+      const amountCents = rawAmount;
+      if (editTransaction && onUpdate) {
+        onUpdate({
+          ...editTransaction,
+          title: data.title,
+          amountCents,
+          category: data.category,
+          dateISO: data.dateISO,
+          merchant: data.merchant || undefined,
+        });
+      } else {
+        onSubmit({
+          title: data.title,
+          amountCents,
+          category: data.category,
+          dateISO: data.dateISO,
+          merchant: data.merchant || undefined,
+        });
+      }
       bottomSheetRef.current?.close();
       reset({ ...data, title: '', amountCents: '', merchant: '' });
     },
-    [onSubmit, bottomSheetRef, reset]
+    [onSubmit, onUpdate, editTransaction, bottomSheetRef, reset]
   );
 
   const snapPoints = ['70%'];
@@ -73,11 +108,14 @@ export function AddTransactionSheet({ bottomSheetRef, onSubmit }: AddTransaction
       index={-1}
       snapPoints={snapPoints}
       enablePanDownToClose
+      onChange={(i) => i === -1 && onClose?.()}
       backgroundStyle={{ backgroundColor: theme.surfaceElevated ?? theme.surface }}
       handleIndicatorStyle={{ backgroundColor: theme.textTertiary }}
     >
       <View style={styles.content}>
-        <Text style={[styles.title, { color: theme.text }]}>Add transaction</Text>
+        <Text style={[styles.title, { color: theme.text }]}>
+          {editTransaction ? 'Edit transaction' : 'Add transaction'}
+        </Text>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.form}
@@ -101,23 +139,6 @@ export function AddTransactionSheet({ bottomSheetRef, onSubmit }: AddTransaction
               </View>
             )}
           />
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecondary }]}>Type</Text>
-            <View style={styles.toggleRow}>
-              <TouchableOpacity
-                style={[styles.togglePill, { backgroundColor: !isIncome ? theme.tint : theme.pillBg }]}
-                onPress={() => setIsIncome(false)}
-              >
-                <Text style={[styles.toggleText, { color: !isIncome ? '#fff' : theme.text }]}>Expense</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.togglePill, { backgroundColor: isIncome ? theme.success : theme.pillBg }]}
-                onPress={() => setIsIncome(true)}
-              >
-                <Text style={[styles.toggleText, { color: isIncome ? '#fff' : theme.text }]}>Income</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
           <Controller
             control={control}
             name="amountCents"
@@ -198,7 +219,7 @@ export function AddTransactionSheet({ bottomSheetRef, onSubmit }: AddTransaction
             style={[styles.button, { backgroundColor: theme.tint }]}
             onPress={handleSubmit(onFormSubmit)}
           >
-            <Text style={styles.buttonText}>Add transaction</Text>
+            <Text style={styles.buttonText}>{editTransaction ? 'Update transaction' : 'Add transaction'}</Text>
           </TouchableOpacity>
         </KeyboardAvoidingView>
       </View>
@@ -225,11 +246,4 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  toggleRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
-  togglePill: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.lg,
-  },
-  toggleText: { fontSize: 15, fontWeight: '500' },
 });

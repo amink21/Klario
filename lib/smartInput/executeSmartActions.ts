@@ -2,6 +2,7 @@ import { generateId } from '@/lib/id';
 import { todayISO } from '@/lib/date';
 import type { LifeItem, Transaction, Subscription } from '@/lib/types';
 import type { SmartInputParseResult } from '@/lib/ai/schemas';
+import { normalizeTitleSimple } from './title';
 
 export type ExecuteResult = {
   created: { lifeItemId?: string; transactionId?: string; subscriptionId?: string };
@@ -39,18 +40,20 @@ export async function executeSmartActions(
     const dueTime = parsed.reminder.dueTime ?? undefined;
     const cadence = parsed.reminder.cadence ?? 'one_time';
     const remindDaysBefore = parsed.reminder.remindDaysBefore ?? defaultRemindDaysBefore;
+    const remindMinutesBefore = dueTime != null ? 0 : (parsed.reminder.remindMinutesBefore ?? undefined);
     const category = parsed.reminder.category ?? 'Other';
     const amountCents = createSpending && parsed.spending?.amountCents ? parsed.spending.amountCents : undefined;
     const id = generateId();
     const item: LifeItem = {
       id,
-      title: parsed.reminder.title.trim(),
+      title: normalizeTitleSimple(parsed.reminder.title.trim()) || parsed.reminder.title.trim(),
       category,
       amountCents: amountCents ?? undefined,
       cadence,
       nextDueISO,
       dueTime: dueTime ?? undefined,
       remindDaysBefore,
+      remindMinutesBefore,
       status: 'active',
     };
     await createLifeItem(item);
@@ -69,7 +72,7 @@ export async function executeSmartActions(
       const txId = generateId();
       await addTransaction({
         id: txId,
-        title: parsed.spending.title.trim(),
+        title: normalizeTitleSimple(parsed.spending.title.trim()) || parsed.spending.title.trim(),
         amountCents,
         category,
         dateISO,
@@ -81,7 +84,7 @@ export async function executeSmartActions(
         const subId = generateId();
         await addSubscription({
           id: subId,
-          title: parsed.spending.title.trim(),
+          title: normalizeTitleSimple(parsed.spending.title.trim()) || parsed.spending.title.trim(),
           amountCents,
           cadence,
           nextDueISO: nextDue,

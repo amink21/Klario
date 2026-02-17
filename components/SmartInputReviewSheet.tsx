@@ -151,7 +151,7 @@ export function SmartInputReviewSheet({
                 placeholderTextColor={theme.textTertiary}
               />
               <View style={styles.pills}>
-                {(['one_time', 'monthly', 'yearly'] as const).map((c) => (
+                {(['one_time', 'daily', 'monthly', 'yearly'] as const).map((c) => (
                   <TouchableOpacity
                     key={c}
                     style={[styles.pill, { backgroundColor: reminder.cadence === c ? theme.tint : theme.pillBg }]}
@@ -218,7 +218,7 @@ export function SmartInputReviewSheet({
               />
             </View>
             <View style={styles.pills}>
-              {(['one_time', 'monthly', 'yearly'] as const).map((c) => (
+              {(['one_time', 'daily', 'monthly', 'yearly'] as const).map((c) => (
                 <TouchableOpacity
                   key={c}
                   style={[styles.pill, { backgroundColor: spending.cadence === c ? theme.tint : theme.pillBg }]}

@@ -53,7 +53,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: theme.tint,
         tabBarInactiveTintColor: theme.textTertiary,
         tabBarStyle: {
-          backgroundColor: theme.surfaceElevated ?? theme.surface,
+          backgroundColor: 'transparent',
           borderTopWidth: 0,
           elevation: 0,
           shadowOpacity: 0,

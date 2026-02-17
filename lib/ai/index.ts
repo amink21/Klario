@@ -33,7 +33,6 @@ export {
   categorizeTransactionWithAI,
   type CategorizeTransactionInput,
 } from './transactionCategory';
-export { TRANSACTION_CATEGORIES } from './transactionCategory';
 export {
   generateDailyBrief,
   regenerateDailyBrief,

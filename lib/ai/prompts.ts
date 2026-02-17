@@ -5,7 +5,7 @@ const JSON_ONLY = 'Respond with valid JSON only. No markdown, no explanation.';
 /** Build system + user prompt for life item extraction (Smart Add) */
 export function extractLifeItemPrompt(input: string): { system: string; user: string } {
   const system = `You extract structured reminder/bill data from a single natural-language sentence.
-Output strict JSON with: title (string), category (string), amountCents (integer, optional), cadence (one of: one_time, monthly, yearly), nextDueISO (YYYY-MM-DD), remindDaysBefore (0-365), confidence (0-1).
+Output strict JSON with: title (string), category (string), amountCents (integer, optional), cadence (one of: one_time, daily, monthly, yearly), nextDueISO (YYYY-MM-DD), remindDaysBefore (0-365), confidence (0-1).
 Use today's date context for relative dates. ${JSON_ONLY}`;
   const user = input.trim();
   return { system, user };
@@ -59,8 +59,8 @@ export function smartInputParsePrompt(input: string, nowISO?: string): { system:
   const system = `Parse this into structured actions. ${todayContext}Output strict JSON only:
 {
   "intent": "reminder" | "spending" | "both" | "unknown",
-  "reminder": { "title": string, "category": one of [${categories}], "nextDueISO": "YYYY-MM-DD" or null, "dueTime": "HH:mm" 24h or null, "cadence": "one_time"|"monthly"|"yearly" or null, "remindDaysBefore": 0-365 or null } or null,
-  "spending": { "title": string, "category": one of [${categories}], "amountCents": number or null, "dateISO": "YYYY-MM-DD" or null, "cadence": "one_time"|"monthly"|"yearly" or null } or null,
+  "reminder": { "title": string, "category": one of [${categories}], "nextDueISO": "YYYY-MM-DD" or null, "dueTime": "HH:mm" 24h or null, "cadence": "one_time"|"daily"|"monthly"|"yearly" or null, "remindDaysBefore": 0-365 or null } or null,
+  "spending": { "title": string, "category": one of [${categories}], "amountCents": number or null, "dateISO": "YYYY-MM-DD" or null, "cadence": "one_time"|"daily"|"monthly"|"yearly" or null } or null,
   "confidence": 0-1
 }
 Examples: "car insurance May 7 $200 monthly" -> both. "Feb 28 wash car" -> reminder only. "Meeting tomorrow 7pm" -> reminder with dueTime "19:00". "Call mom at 1am" -> reminder with dueTime "01:00". Use relative dates (today, tomorrow -> YYYY-MM-DD). For times use 24h "HH:mm" (e.g. 7pm -> "19:00", 1am -> "01:00"). Amounts in cents. ${JSON_ONLY}`;

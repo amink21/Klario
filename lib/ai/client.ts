@@ -103,6 +103,10 @@ export async function callAI<T = unknown>(
         }
         if (res.status === 402) {
           message = 'Insufficient credits on OpenRouter. Add credits or check your key at openrouter.ai/settings. Free models may still require a verified account.';
+        } else if (res.status === 401 || /user not found|invalid.*key|unauthorized/i.test(message)) {
+          message =
+            'OpenRouter authentication failed. Use an API key from https://openrouter.ai/keys (not an OpenAI key). ' +
+            'Set EXPO_PUBLIC_OPENROUTER_API_KEY in your .env file, then restart the app (npm start).';
         }
         const e = new Error(message) as AIError;
         e.code = 'openai_error';

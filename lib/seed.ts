@@ -13,8 +13,9 @@ function daysFromNow(days: number): string {
 export function defaultSettings(): SettingsState {
   return {
     morningBrief: true,
+    morningBriefTime: '07:00',
     dueItemReminders: true,
-    defaultRemindDaysBefore: 7,
+    defaultRemindDaysBefore: 1,
   };
 }
 

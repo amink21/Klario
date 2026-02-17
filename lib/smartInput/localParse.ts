@@ -2,19 +2,8 @@ import * as chrono from 'chrono-node';
 import { todayISO } from '@/lib/date';
 import type { LocalParseResult, LocalReminder, LocalSpending } from './schemas';
 import type { SmartInputParseResult } from '@/lib/ai/schemas';
-
-const SMART_INPUT_CATEGORIES = [
-  'Food',
-  'Transport',
-  'Subscriptions',
-  'Insurance',
-  'Health',
-  'Utilities',
-  'Housing',
-  'Entertainment',
-  'Other',
-] as const;
-type Category = (typeof SMART_INPUT_CATEGORIES)[number];
+import { classifyCategory } from './category';
+import { normalizeTitle } from './title';
 
 /** Keywords that suggest reminder / bill / renewal */
 const REMINDER_BILL_KEYWORDS =
@@ -24,10 +13,20 @@ const REMINDER_BILL_KEYWORDS =
 const PURCHASE_KEYWORDS =
   /\b(coffee|lunch|uber|groceries|gas|parking|meal|food|bought|spent|purchase)\b/i;
 
+/** Cadence: daily */
+const CADENCE_DAILY = /\b(daily|every day|each day|per day)\b/i;
 /** Cadence: monthly */
 const CADENCE_MONTHLY = /\b(monthly|every month|per month|each month|month)\b/i;
 /** Cadence: yearly */
 const CADENCE_YEARLY = /\b(yearly|annually|every year|per year|each year|yearly)\b/i;
+
+/** "remind 15 mins before", "remind 30 minutes before" → minutes (1–1440) */
+function parseRemindMinutesBefore(text: string): number | undefined {
+  const m = text.match(/\bremind\s+(\d+)\s*(?:mins?|minutes?)\s*before\b/i);
+  if (!m) return undefined;
+  const n = parseInt(m[1]!, 10);
+  return n < 1 ? undefined : Math.min(n, 1440);
+}
 
 /** Currency amount patterns: $5, 5$, 5.00, CAD 5, 10 dollars */
 const AMOUNT_PATTERNS = [
@@ -74,31 +73,38 @@ function parseDateTimes(text: string, nowISO: string): ParsedDateTime[] {
   for (const r of results) {
     const d = r.start?.date();
     if (!d) continue;
-    const iso = d.toISOString().slice(0, 10);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const iso = `${y}-${m}-${day}`;
     const key = iso;
     if (seen.has(key)) continue;
     seen.add(key);
     let timeHHMM: string | undefined;
     const start = r.start as { isCertain?: (c: string) => boolean };
-    if (start?.isCertain && start.isCertain('hour')) {
-      const h = d.getHours();
-      const m = d.getMinutes();
-      timeHHMM = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    const h = d.getHours();
+    const min = d.getMinutes();
+    if ((start?.isCertain && start.isCertain('hour')) || h !== 0 || min !== 0) {
+      timeHHMM = `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
     }
     out.push({ dateISO: iso, timeHHMM });
   }
   return out;
 }
 
+function hasCadenceDaily(text: string): boolean {
+  return CADENCE_DAILY.test(text);
+}
 function hasCadenceMonthly(text: string): boolean {
   return CADENCE_MONTHLY.test(text);
 }
 function hasCadenceYearly(text: string): boolean {
   return CADENCE_YEARLY.test(text);
 }
-function getCadence(text: string): 'one_time' | 'monthly' | 'yearly' | null {
+function getCadence(text: string): 'one_time' | 'daily' | 'monthly' | 'yearly' | null {
   if (hasCadenceYearly(text)) return 'yearly';
   if (hasCadenceMonthly(text)) return 'monthly';
+  if (hasCadenceDaily(text)) return 'daily';
   return null;
 }
 
@@ -107,47 +113,6 @@ function hasReminderBillKeywords(text: string): boolean {
 }
 function hasPurchaseKeywords(text: string): boolean {
   return PURCHASE_KEYWORDS.test(text);
-}
-
-/** Suggest category from keywords */
-function suggestCategory(text: string): Category {
-  const t = text.toLowerCase();
-  if (/\b(coffee|lunch|meal|food|groceries|restaurant|uber eats)\b/.test(t)) return 'Food';
-  if (/\b(uber|gas|parking|transport|car|bus|train)\b/.test(t)) return 'Transport';
-  if (/\b(netflix|spotify|subscription|membership)\b/.test(t)) return 'Subscriptions';
-  if (/\b(insurance)\b/.test(t)) return 'Insurance';
-  if (/\b(doctor|health|pharmacy)\b/.test(t)) return 'Health';
-  if (/\b(utility|utilities|electric|water)\b/.test(t)) return 'Utilities';
-  if (/\b(rent|housing)\b/.test(t)) return 'Housing';
-  if (/\b(entertainment|movie|game)\b/.test(t)) return 'Entertainment';
-  return 'Other';
-}
-
-/** Strip date/amount/time tokens from text to get a clean title (best effort) */
-function normalizeTitle(
-  text: string,
-  dateStrs: string[],
-  amountCents: number[]
-): string {
-  let out = text
-    .replace(/\$\s*\d+(?:\.\d{1,2})?/g, '')
-    .replace(/\d+(?:\.\d{1,2})?\s*\$/g, '')
-    .replace(/\bCAD\s*\d+(?:\.\d{1,2})?/gi, '')
-    .replace(/\b\d+(?:\.\d{1,2})?\s*dollars?\b/gi, '')
-    .replace(/\b(monthly|yearly|every month|per month|annually|each year)\b/gi, '')
-    .replace(/\b(today|tomorrow)\b/gi, '')
-    .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)\b/gi, '')
-    .replace(/\b(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)?\b/gi, '')
-    .trim();
-  for (const d of dateStrs) {
-    out = out.replace(new RegExp(d.replace(/-/g, '-'), 'g'), '').trim();
-  }
-  for (const c of amountCents) {
-    const asDollars = (c / 100).toString();
-    out = out.replace(new RegExp(asDollars.replace('.', '\\.'), 'g'), '').trim();
-  }
-  out = out.replace(/\s+/g, ' ').trim();
-  return out || text.trim();
 }
 
 /**
@@ -191,8 +156,8 @@ export function localParseSmartInput(text: string, nowISO: string): LocalParseRe
   }
   confidence = Math.max(0, Math.min(1, confidence));
 
-  const title = normalizeTitle(trimmed, dates, amounts) || trimmed;
-  const category = suggestCategory(trimmed);
+  const title = normalizeTitle(trimmed, { datePhrases: dates, amountsCents: amounts }) || trimmed;
+  const category = classifyCategory(trimmed);
 
   // --- Decision rules ---
   let intent: LocalParseResult['intent'] = 'unknown';
@@ -206,6 +171,7 @@ export function localParseSmartInput(text: string, nowISO: string): LocalParseRe
   } else if (dateTimes.length > 0 && amountCents === 0) {
     intent = 'reminder';
     reasons.push('date_only');
+    confidence = Math.max(confidence, 0.75);
   } else if (amountCents > 0 && dateTimes.length === 0) {
     intent = 'spending';
     confidence = Math.min(confidence, 0.7);
@@ -225,6 +191,7 @@ export function localParseSmartInput(text: string, nowISO: string): LocalParseRe
     const first = dateTimes[0];
     const nextDueISO = first ? first.dateISO : null;
     const dueTime = first?.timeHHMM ?? undefined;
+    const remindMins = parseRemindMinutesBefore(trimmed);
     const rem: LocalReminder = {
       title,
       category,
@@ -232,6 +199,7 @@ export function localParseSmartInput(text: string, nowISO: string): LocalParseRe
       dueTime: dueTime ?? null,
       cadence: cadence ?? 'one_time',
       remindDaysBefore: nextDueISO ? DEFAULT_REMIND_DAYS_BEFORE : undefined,
+      remindMinutesBefore: remindMins,
     };
     result.reminder = rem;
   }
@@ -260,8 +228,9 @@ export function localToSmartResult(local: LocalParseResult, nowISO: string): Sma
           category: local.reminder.category,
           nextDueISO: local.reminder.nextDueISO ?? null,
           dueTime: local.reminder.dueTime ?? null,
-          cadence: (local.reminder.cadence ?? 'one_time') as 'one_time' | 'monthly' | 'yearly',
+          cadence: (local.reminder.cadence ?? 'one_time') as 'one_time' | 'daily' | 'monthly' | 'yearly',
           remindDaysBefore: local.reminder.remindDaysBefore ?? DEFAULT_REMIND_DAYS_BEFORE,
+          remindMinutesBefore: local.reminder.remindMinutesBefore ?? null,
         }
       : null;
   const spending =
@@ -271,7 +240,7 @@ export function localToSmartResult(local: LocalParseResult, nowISO: string): Sma
           category: local.spending.category,
           amountCents: local.spending.amountCents ?? null,
           dateISO: local.spending.dateISO ?? nowISO,
-          cadence: (local.spending.cadence ?? 'one_time') as 'one_time' | 'monthly' | 'yearly' | null,
+          cadence: (local.spending.cadence ?? 'one_time') as 'one_time' | 'daily' | 'monthly' | 'yearly' | null,
         }
       : null;
   return {

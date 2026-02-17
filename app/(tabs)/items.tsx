@@ -20,14 +20,14 @@ import { ItemDetailsSheet } from '@/components/ItemDetailsSheet';
 import { TabScreenAnimation } from '@/components/TabScreenAnimation';
 import BottomSheet from '@gorhom/bottom-sheet';
 import type { LifeItem } from '@/lib/types';
-import { daysUntil } from '@/lib/date';
+import { daysUntil, isOverdue, getDueTimestamp } from '@/lib/date';
 import { generateId } from '@/lib/id';
 import { updateLifeItem, deleteLifeItem } from '@/lib/storage';
 import { cancelScheduledNotification, scheduleDueReminder } from '@/lib/notifications';
 import { handleSmartInput } from '@/lib/smartInput/handleSmartInput';
 import { executeSmartActions } from '@/lib/smartInput/executeSmartActions';
 
-type Filter = 'all' | 'due_soon' | 'monthly' | 'yearly' | 'cancelled';
+type Filter = 'all' | 'today' | 'overdue' | 'due_soon' | 'daily' | 'monthly' | 'yearly' | 'cancelled';
 
 export default function ItemsScreen() {
   const colorScheme = useColorScheme();
@@ -58,21 +58,36 @@ export default function ItemsScreen() {
 
   const filtered = useMemo(() => {
     const active = items.filter((i) => i.status === 'active');
+    let list: LifeItem[];
     switch (filter) {
+      case 'today':
+        list = active.filter((i) => daysUntil(i.nextDueISO) === 0);
+        break;
+      case 'overdue':
+        list = active.filter((i) => isOverdue(i.nextDueISO, i.dueTime));
+        break;
       case 'due_soon':
-        return active.filter((i) => {
+        list = active.filter((i) => {
           const d = daysUntil(i.nextDueISO);
           return d >= 0 && d <= 14;
         });
+        break;
+      case 'daily':
+        list = active.filter((i) => i.cadence === 'daily');
+        break;
       case 'monthly':
-        return active.filter((i) => i.cadence === 'monthly');
+        list = active.filter((i) => i.cadence === 'monthly');
+        break;
       case 'yearly':
-        return active.filter((i) => i.cadence === 'yearly');
+        list = active.filter((i) => i.cadence === 'yearly');
+        break;
       case 'cancelled':
-        return items.filter((i) => i.status === 'cancelled');
+        list = items.filter((i) => i.status === 'cancelled');
+        break;
       default:
-        return items;
+        list = items;
     }
+    return [...list].sort((a, b) => getDueTimestamp(a.nextDueISO, a.dueTime) - getDueTimestamp(b.nextDueISO, b.dueTime));
   }, [items, filter]);
 
   const handleAddItem = async (item: Omit<LifeItem, 'id' | 'status'>) => {
@@ -86,7 +101,8 @@ export default function ItemsScreen() {
         item.title,
         item.nextDueISO,
         item.remindDaysBefore,
-        item.dueTime ?? undefined
+        item.dueTime ?? undefined,
+        item.remindMinutesBefore ?? 30
       );
     }
     const newItem: LifeItem = {
@@ -100,7 +116,7 @@ export default function ItemsScreen() {
     setDraftQuickAdd(null);
   };
 
-  const defaultRemindDaysBefore = settings?.defaultRemindDaysBefore ?? 7;
+  const defaultRemindDaysBefore = settings?.defaultRemindDaysBefore ?? 1;
 
   const runExecute = async (
     parsed: import('@/lib/ai/schemas').SmartInputParseResult,
@@ -122,7 +138,8 @@ export default function ItemsScreen() {
             item.title,
             item.nextDueISO,
             item.remindDaysBefore,
-            item.dueTime ?? undefined
+            item.dueTime ?? undefined,
+            item.remindMinutesBefore ?? 30
           );
         }
         await addLifeItem({ ...item, notificationId: notificationId ?? undefined });
@@ -206,7 +223,7 @@ export default function ItemsScreen() {
     if (patch.status !== 'cancelled' && remindDays > 0) {
       if (existing.notificationId) await cancelScheduledNotification(existing.notificationId);
       notificationId =
-        (await scheduleDueReminder(id, patch.title ?? existing.title, nextDue, remindDays, patch.dueTime ?? existing.dueTime ?? undefined)) ?? undefined;
+        (await scheduleDueReminder(id, patch.title ?? existing.title, nextDue, remindDays, patch.dueTime ?? existing.dueTime ?? undefined, patch.remindMinutesBefore ?? existing.remindMinutesBefore ?? 30)) ?? undefined;
     }
     await updateLifeItem(id, { ...patch, notificationId: notificationId ?? null });
     const updated = items.map((i) => (i.id === id ? { ...i, ...patch, notificationId } : i));
@@ -244,9 +261,12 @@ export default function ItemsScreen() {
     );
   };
 
-  const pills: { key: Filter; label: string }[] = [
+  const filterPills: { key: Filter; label: string }[] = [
     { key: 'all', label: 'All' },
-    { key: 'due_soon', label: 'Due soon (14d)' },
+    { key: 'today', label: 'Today' },
+    { key: 'overdue', label: 'Overdue' },
+    { key: 'due_soon', label: '14 days' },
+    { key: 'daily', label: 'Daily' },
     { key: 'monthly', label: 'Monthly' },
     { key: 'yearly', label: 'Yearly' },
     { key: 'cancelled', label: 'Cancelled' },
@@ -255,42 +275,55 @@ export default function ItemsScreen() {
   return (
     <TabScreenAnimation>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <View style={styles.header}>
-        <Text style={[styles.pageTitle, { color: theme.text }]}>Reminders</Text>
-        <View style={styles.quickAddWrap}>
-          <SmartInputBar
-            context="items"
-            onSubmit={handleSmartInputSubmit}
-            loading={smartInputLoading}
-          />
+        <View style={[styles.header, { borderBottomColor: theme.border }]}>
+          <Text style={[styles.pageTitle, { color: theme.text }]}>Reminders</Text>
+          <View style={styles.quickAddWrap}>
+            <SmartInputBar
+              context="items"
+              onSubmit={handleSmartInputSubmit}
+              loading={smartInputLoading}
+            />
+          </View>
         </View>
-      </View>
-      <Text style={[styles.filterLabel, { color: theme.textSecondary }]}>Filter</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillsScroll} contentContainerStyle={styles.pillsContent}>
-        {pills.map((p) => (
-          <TouchableOpacity
-            key={p.key}
-            style={[
-              styles.pill,
-              { backgroundColor: filter === p.key ? theme.accentPill : theme.pillBg },
-            ]}
-            onPress={() => setFilter(p.key)}
-          >
-            <Text style={[styles.pillText, { color: filter === p.key ? theme.text : theme.textSecondary }]}>
-              {p.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
 
-      <FlatList
+        <View style={[styles.filterSection, { backgroundColor: theme.background }]}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.pillsContent}
+            style={styles.pillsScroll}
+          >
+            {filterPills.map((p) => (
+              <TouchableOpacity
+                key={p.key}
+                style={[
+                  styles.pill,
+                  { backgroundColor: filter === p.key ? theme.accentPill : theme.pillBg },
+                ]}
+                onPress={() => setFilter(p.key)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.pillText, { color: filter === p.key ? theme.text : theme.textSecondary }]}>
+                  {p.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        <FlatList
         data={filtered}
         keyExtractor={(i) => i.id}
         contentContainerStyle={[styles.list, { paddingBottom: 100 }]}
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: theme.textSecondary }]}>
-            {filter === 'cancelled' ? 'No cancelled items' : 'No reminders yet'}
-          </Text>
+          <View style={styles.emptyWrap}>
+            <Text style={[styles.empty, { color: theme.textTertiary }]}>
+              {filter === 'cancelled' ? 'No cancelled reminders.' :
+               filter === 'overdue' ? 'No overdue reminders.' :
+               filter === 'today' ? 'Nothing due today.' :
+               'No reminders yet. Add one above.'}
+            </Text>
+          </View>
         }
         renderItem={({ item }) => (
           <SwipeableReminderRow
@@ -316,6 +349,7 @@ export default function ItemsScreen() {
           setSelectedItem(null);
         }}
         initialTitle={draftQuickAdd ?? undefined}
+        defaultRemindDaysBefore={defaultRemindDaysBefore}
       />
         <ItemDetailsSheet
           bottomSheetRef={detailsSheetRef}
@@ -342,24 +376,32 @@ export default function ItemsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.sm },
-  pageTitle: { fontSize: 28, fontWeight: '600', letterSpacing: -0.6, marginBottom: spacing.lg },
-  quickAddWrap: { marginBottom: spacing.md },
-  filterLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginBottom: spacing.xs,
-    paddingHorizontal: spacing.lg,
-    letterSpacing: 0.2,
+  header: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+    borderBottomWidth: 1,
   },
-  pillsScroll: { maxHeight: 44, marginBottom: spacing.sm },
-  pillsContent: { paddingHorizontal: spacing.lg, gap: spacing.sm, flexDirection: 'row', alignItems: 'center' },
-  pill: {
-    paddingHorizontal: spacing.lg,
+  pageTitle: { fontSize: 26, fontWeight: '600', letterSpacing: -0.5, marginBottom: spacing.md },
+  quickAddWrap: {},
+  filterSection: {
     paddingVertical: spacing.sm,
+    paddingLeft: spacing.xl,
+  },
+  pillsScroll: { flexGrow: 0 },
+  pillsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingRight: spacing.xl,
+  },
+  pill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
     borderRadius: radius.full,
   },
   pillText: { fontSize: 14, fontWeight: '500' },
-  list: { padding: spacing.xl, paddingBottom: 100 },
-  empty: { textAlign: 'center', marginTop: spacing.xxl, color: 'inherit' },
+  list: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: 100 },
+  emptyWrap: { paddingVertical: spacing.xxl * 1.5, paddingHorizontal: spacing.xl },
+  empty: { fontSize: 15, textAlign: 'center' },
 });

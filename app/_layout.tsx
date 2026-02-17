@@ -21,6 +21,7 @@ import {
   setSubscriptions,
   setSettings,
 } from '@/lib/storage';
+import { updateMorningBriefSchedule } from '@/lib/notifications';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -61,6 +62,7 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const load = useStore((s) => s.load);
+  const settings = useStore((s) => s.settings);
 
   useEffect(() => {
     (async () => {
@@ -76,22 +78,20 @@ function RootLayoutNav() {
     })();
   }, [load]);
 
+  useEffect(() => {
+    if (settings?.morningBrief != null) {
+      updateMorningBriefSchedule({
+        morningBrief: settings.morningBrief,
+        morningBriefTime: settings.morningBriefTime ?? '07:00',
+      });
+    }
+  }, [settings?.morningBrief, settings?.morningBriefTime]);
+
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen
-          name="settings"
-          options={{
-            headerShown: true,
-            title: 'Settings',
-            headerBackTitle: 'Back',
-            headerShadowVisible: false,
-            headerStyle: { backgroundColor: '#f7f6f4' },
-            headerTintColor: '#2c2c2e',
-            headerTitleStyle: { fontSize: 17, fontWeight: '600', color: '#2c2c2e' },
-          }}
-        />
+        <Stack.Screen name="settings" options={{ headerShown: false }} />
       </Stack>
     </ThemeProvider>
   );

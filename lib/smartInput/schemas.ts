@@ -8,7 +8,7 @@ export {
   SMART_INPUT_CATEGORIES,
 } from '@/lib/ai/schemas';
 
-const cadenceSchema = z.enum(['one_time', 'monthly', 'yearly']);
+const cadenceSchema = z.enum(['one_time', 'daily', 'monthly', 'yearly']);
 
 /** Local parse reminder shape (partial + optional dates) */
 export const localReminderSchema = z.object({
@@ -18,6 +18,7 @@ export const localReminderSchema = z.object({
   dueTime: z.string().regex(/^\d{1,2}:\d{2}$/).nullable().optional(),
   cadence: cadenceSchema.nullable().optional(),
   remindDaysBefore: z.number().int().min(0).max(365).optional(),
+  remindMinutesBefore: z.number().int().min(1).max(1440).optional(),
   amountCents: z.number().int().nonnegative().optional(),
 });
 

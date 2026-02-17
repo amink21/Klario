@@ -16,6 +16,7 @@ const MONTHS: Record<string, number> = {
 };
 
 const CADENCE_PATTERNS: { regex: RegExp; cadence: Cadence }[] = [
+  { regex: /\b(daily|each day|every day)\b/i, cadence: 'daily' },
   { regex: /\b(monthly|each month|every month)\b/i, cadence: 'monthly' },
   { regex: /\b(yearly|annual|annually|each year|every year)\b/i, cadence: 'yearly' },
   { regex: /\b(one\s*time|once|one-time)\b/i, cadence: 'one_time' },

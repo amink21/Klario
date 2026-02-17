@@ -33,7 +33,17 @@ function setCached(text: string, result: SmartInputParseResult): void {
 }
 
 function needReview(parsed: SmartInputParseResult): boolean {
-  if (parsed.confidence < CONFIDENCE_REVIEW_THRESHOLD || parsed.intent === 'unknown') return true;
+  if (parsed.intent === 'unknown') return true;
+  const hasClearReminder =
+    (parsed.intent === 'reminder' || parsed.intent === 'both') &&
+    parsed.reminder != null &&
+    parsed.reminder.nextDueISO != null &&
+    (parsed.reminder.title?.trim() ?? '').length > 0;
+  if (hasClearReminder && (parsed.intent === 'reminder' || (parsed.intent === 'both' && parsed.spending == null)))
+    return false;
+  if (parsed.intent === 'reminder' && (!parsed.reminder?.nextDueISO || !parsed.reminder?.title?.trim()))
+    return true;
+  if (parsed.confidence < CONFIDENCE_REVIEW_THRESHOLD) return true;
   if (
     (parsed.intent === 'reminder' || parsed.intent === 'both') &&
     parsed.reminder != null &&

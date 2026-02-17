@@ -2,14 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useColorScheme } from '@/components/useColorScheme';
 import { colors, spacing, radius } from '@/constants/Theme';
-import { formatDueIn, daysUntil, formatTimeHHMM } from '@/lib/date';
+import { formatDueIn, daysUntil, formatTimeHHMM, getDueTimestamp } from '@/lib/date';
 import { formatCurrency } from '@/lib/currency';
 import type { LifeItem } from '@/lib/types';
 
 interface UpcomingListProps {
   items: LifeItem[];
   limit?: number;
-  /** Only show items due within this many days from today. Default 14. */
+  /** 0 = today only, 7/14/30 = within that many days. Default 14. */
   withinDays?: number;
   onItemPress?: (item: LifeItem) => void;
 }
@@ -21,9 +21,10 @@ export function UpcomingList({ items, limit = 5, withinDays = 14, onItemPress }:
     .filter((i) => {
       if (i.status !== 'active') return false;
       const d = daysUntil(i.nextDueISO);
+      if (withinDays === 0) return d === 0;
       return d >= 0 && d <= withinDays;
     })
-    .sort((a, b) => new Date(a.nextDueISO).getTime() - new Date(b.nextDueISO).getTime())
+    .sort((a, b) => getDueTimestamp(a.nextDueISO, a.dueTime) - getDueTimestamp(b.nextDueISO, b.dueTime))
     .slice(0, limit);
 
   // Dedupe by id so we never render duplicate keys (e.g. from store glitches)
@@ -37,7 +38,9 @@ export function UpcomingList({ items, limit = 5, withinDays = 14, onItemPress }:
   return (
     <View style={[styles.wrapper, { backgroundColor: theme.surface }]}>
       {deduped.length === 0 ? (
-        <Text style={[styles.empty, { color: theme.textTertiary }]}>Nothing due soon</Text>
+        <Text style={[styles.empty, { color: theme.textTertiary }]}>
+          {withinDays === 0 ? 'Nothing due today' : 'Nothing due soon'}
+        </Text>
       ) : (
         deduped.map((item, index) => (
           <TouchableOpacity
@@ -51,7 +54,7 @@ export function UpcomingList({ items, limit = 5, withinDays = 14, onItemPress }:
                 {item.title}
               </Text>
               <Text style={[styles.dueIn, { color: theme.textTertiary }]}>
-                {formatDueIn(item.nextDueISO)}
+                {formatDueIn(item.nextDueISO, item.dueTime)}
                 {item.dueTime ? ` at ${formatTimeHHMM(item.dueTime)}` : ''}
               </Text>
             </View>

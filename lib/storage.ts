@@ -1,5 +1,24 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { LifeItem, Transaction, Subscription, SettingsState } from './types';
+import { supabase } from './supabase';
+import {
+  getUserId,
+  fetchLifeItems,
+  insertLifeItem as sbInsertLifeItem,
+  setLifeItems as sbSetLifeItems,
+  updateLifeItem as sbUpdateLifeItem,
+  deleteLifeItem as sbDeleteLifeItem,
+  fetchTransactions,
+  insertTransaction as sbInsertTransaction,
+  setTransactions as sbSetTransactions,
+  deleteTransaction as sbDeleteTransaction,
+  updateTransaction as sbUpdateTransaction,
+  fetchSubscriptions,
+  insertSubscription as sbInsertSubscription,
+  setSubscriptions as sbSetSubscriptions,
+  fetchSettings as sbFetchSettings,
+  upsertSettings as sbUpsertSettings,
+} from './supabase-data';
 
 const KEYS = {
   LIFE_ITEMS: 'life_items',
@@ -9,7 +28,12 @@ const KEYS = {
   HAS_SEEDED: 'has_seeded',
 } as const;
 
-/** In-memory cache; load once and persist on writes. Swap this layer for Supabase later. */
+/** When Supabase is configured, all data goes through Supabase. */
+function useSupabase(): boolean {
+  return !!supabase;
+}
+
+/** Local cache and persistence only when Supabase is not configured. */
 let cache: {
   items: LifeItem[];
   transactions: Transaction[];
@@ -54,23 +78,36 @@ async function persist(): Promise<void> {
 
 // --- Life items ---
 export async function getLifeItems(): Promise<LifeItem[]> {
+  if (useSupabase()) return fetchLifeItems();
   await loadAll();
   return [...cache.items];
 }
 
 export async function setLifeItems(items: LifeItem[]): Promise<void> {
+  if (useSupabase()) {
+    await sbSetLifeItems(items);
+    return;
+  }
   await loadAll();
   cache.items = items;
   await persist();
 }
 
 export async function addLifeItem(item: LifeItem): Promise<void> {
+  if (useSupabase()) {
+    await sbInsertLifeItem(item);
+    return;
+  }
   await loadAll();
   cache.items.push(item);
   await persist();
 }
 
 export async function updateLifeItem(id: string, patch: Partial<LifeItem>): Promise<void> {
+  if (useSupabase()) {
+    await sbUpdateLifeItem(id, patch);
+    return;
+  }
   await loadAll();
   const i = cache.items.findIndex((x) => x.id === id);
   if (i === -1) return;
@@ -79,11 +116,19 @@ export async function updateLifeItem(id: string, patch: Partial<LifeItem>): Prom
 }
 
 export async function getLifeItem(id: string): Promise<LifeItem | null> {
+  if (useSupabase()) {
+    const items = await fetchLifeItems();
+    return items.find((x) => x.id === id) ?? null;
+  }
   await loadAll();
   return cache.items.find((x) => x.id === id) ?? null;
 }
 
 export async function deleteLifeItem(id: string): Promise<void> {
+  if (useSupabase()) {
+    await sbDeleteLifeItem(id);
+    return;
+  }
   await loadAll();
   cache.items = cache.items.filter((x) => x.id !== id);
   await persist();
@@ -91,79 +136,141 @@ export async function deleteLifeItem(id: string): Promise<void> {
 
 // --- Transactions ---
 export async function getTransactions(): Promise<Transaction[]> {
+  if (useSupabase()) return fetchTransactions();
   await loadAll();
   return [...cache.transactions];
 }
 
 export async function addTransaction(tx: Transaction): Promise<void> {
+  if (useSupabase()) {
+    await sbInsertTransaction(tx);
+    return;
+  }
   await loadAll();
   cache.transactions.unshift(tx);
   await persist();
 }
 
 export async function setTransactions(txs: Transaction[]): Promise<void> {
+  if (useSupabase()) {
+    await sbSetTransactions(txs);
+    return;
+  }
   await loadAll();
   cache.transactions = txs;
   await persist();
 }
 
+export async function deleteTransaction(id: string): Promise<void> {
+  if (useSupabase()) {
+    await sbDeleteTransaction(id);
+    return;
+  }
+  await loadAll();
+  cache.transactions = cache.transactions.filter((t) => t.id !== id);
+  await persist();
+}
+
+export async function updateTransaction(tx: Transaction): Promise<void> {
+  if (useSupabase()) {
+    await sbUpdateTransaction(tx);
+    return;
+  }
+  await loadAll();
+  const idx = cache.transactions.findIndex((t) => t.id === tx.id);
+  if (idx >= 0) {
+    cache.transactions[idx] = tx;
+    await persist();
+  }
+}
+
 // --- Subscriptions ---
 export async function getSubscriptions(): Promise<Subscription[]> {
+  if (useSupabase()) return fetchSubscriptions();
   await loadAll();
   return [...cache.subscriptions];
 }
 
 export async function setSubscriptions(subs: Subscription[]): Promise<void> {
+  if (useSupabase()) {
+    await sbSetSubscriptions(subs);
+    return;
+  }
   await loadAll();
   cache.subscriptions = subs;
   await persist();
 }
 
 export async function addSubscription(sub: Subscription): Promise<void> {
+  if (useSupabase()) {
+    await sbInsertSubscription(sub);
+    return;
+  }
   await loadAll();
   cache.subscriptions.push(sub);
   await persist();
 }
 
 // --- Settings ---
-const DEFAULT_SETTINGS: SettingsState = {
+export const DEFAULT_SETTINGS: SettingsState = {
   morningBrief: true,
+  morningBriefTime: '07:00',
   dueItemReminders: true,
-  defaultRemindDaysBefore: 7,
+  defaultRemindDaysBefore: 1,
 };
 
 export async function getSettings(): Promise<SettingsState> {
+  if (useSupabase()) {
+    const remote = await sbFetchSettings();
+    return remote ?? DEFAULT_SETTINGS;
+  }
   await loadAll();
   return cache.settings ?? DEFAULT_SETTINGS;
 }
 
 export async function setSettings(settings: SettingsState): Promise<void> {
+  if (useSupabase()) {
+    await sbUpsertSettings(settings);
+    return;
+  }
   await loadAll();
   cache.settings = settings;
   await persist();
 }
 
-// --- Seed / Reset ---
+// --- Seed flag ---
 export async function hasSeeded(): Promise<boolean> {
+  if (useSupabase()) {
+    const s = await getSettings();
+    return s.hasSeeded ?? false;
+  }
   const v = await AsyncStorage.getItem(KEYS.HAS_SEEDED);
   return v === '1';
 }
 
 export async function setSeeded(): Promise<void> {
+  if (useSupabase()) {
+    const current = await getSettings();
+    await sbUpsertSettings({ ...current, hasSeeded: true });
+    return;
+  }
   await AsyncStorage.setItem(KEYS.HAS_SEEDED, '1');
 }
 
-/** Reset all data and clear seeded flag (for demo reset). */
+/** Reset all data. When Supabase configured, deletes all user rows; always clears local cache. */
 export async function resetAllData(): Promise<void> {
+  const uid = supabase ? await getUserId() : null;
+  if (supabase && uid) {
+    await supabase.from('life_items').delete().eq('user_id', uid);
+    await supabase.from('transactions').delete().eq('user_id', uid);
+    await supabase.from('subscriptions').delete().eq('user_id', uid);
+    await supabase.from('settings').delete().eq('user_id', uid);
+  }
   cache = {
     items: [],
     transactions: [],
     subscriptions: [],
-    settings: {
-      morningBrief: true,
-      dueItemReminders: true,
-      defaultRemindDaysBefore: 7,
-    },
+    settings: { ...DEFAULT_SETTINGS, hasSeeded: false },
   };
   initialized = true;
   await AsyncStorage.multiRemove([
@@ -174,12 +281,3 @@ export async function resetAllData(): Promise<void> {
     KEYS.HAS_SEEDED,
   ]);
 }
-
-/*
- * SUPABASE SWAP (later):
- * - Replace loadAll/persist with Supabase client calls.
- * - getLifeItems() -> supabase.from('life_items').select('*')
- * - setLifeItems() -> delete + insert or upsert by id
- * - Same pattern for transactions, subscriptions, settings.
- * - Keep this file as the single data access layer so components don't change.
- */

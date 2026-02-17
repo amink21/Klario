@@ -8,7 +8,14 @@ import {
   Switch,
   Alert,
   TextInput,
+  Platform,
+  Modal,
+  Pressable,
 } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useStore } from '@/lib/store';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,19 +45,43 @@ import {
   runAllAITests,
   runMorningBriefTest,
 } from '@/lib/ai/testHelpers';
+import { updateMorningBriefSchedule } from '@/lib/notifications';
+import { normalizeDueTime } from '@/lib/date';
+
+/** Parse "HH:mm" to Date (today at that time). */
+function timeStringToDate(s: string): Date {
+  const [h, m] = (s || '07:00').split(':').map((x) => parseInt(x, 10) || 0);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+/** Format Date to "HH:mm". */
+function dateToTimeString(d: Date): string {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+const PRESET_REMIND_DAYS = [1, 7, 14, 30] as const;
 
 export default function SettingsScreen() {
   const colorScheme = useColorScheme();
   const theme = colors[colorScheme ?? 'light'];
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
   const settings = useStore((s) => s.settings);
   const setSettingsStore = useStore((s) => s.setSettings);
   const load = useStore((s) => s.load);
   const [aiTestLoading, setAiTestLoading] = useState(false);
+  const [customRemindDays, setCustomRemindDays] = useState<string>('');
   const { session, signInWithPassword, signUp, signOut } = useAuth();
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [showBriefTimePicker, setShowBriefTimePicker] = useState(false);
+  const [briefTimePickerValue, setBriefTimePickerValue] = useState(() =>
+    timeStringToDate('07:00')
+  );
 
   useEffect(() => {
     load();
@@ -91,6 +122,20 @@ export default function SettingsScreen() {
     const next = { ...settings!, morningBrief: value };
     await setSettingsStorage(next);
     await setSettingsStore(next);
+    await updateMorningBriefSchedule(next);
+  };
+
+  const handleMorningBriefTime = async (raw: string) => {
+    let value = raw.trim();
+    if (value && !value.includes(':')) {
+      const h = parseInt(value, 10);
+      if (!isNaN(h) && h >= 0 && h <= 23) value = `${String(h).padStart(2, '0')}:00`;
+    }
+    const normalized = normalizeDueTime(value) ?? settings!.morningBriefTime ?? '07:00';
+    const next = { ...settings!, morningBriefTime: normalized };
+    await setSettingsStorage(next);
+    await setSettingsStore(next);
+    await updateMorningBriefSchedule(next);
   };
 
   const handleDueReminders = async (value: boolean) => {
@@ -99,10 +144,12 @@ export default function SettingsScreen() {
     await setSettingsStore(next);
   };
 
-  const handleDefaultRemind = async (value: 7 | 14 | 30) => {
-    const next = { ...settings!, defaultRemindDaysBefore: value };
+  const handleDefaultRemind = async (value: number) => {
+    const clamped = Math.min(365, Math.max(1, value));
+    const next = { ...settings!, defaultRemindDaysBefore: clamped };
     await setSettingsStorage(next);
     await setSettingsStore(next);
+    if (PRESET_REMIND_DAYS.includes(clamped as 1 | 7 | 14 | 30)) setCustomRemindDays('');
   };
 
   const handleResetDemo = () => {
@@ -188,16 +235,29 @@ export default function SettingsScreen() {
   const s = settings ?? defaultSettings();
   const appVersion =
     Constants.expoConfig?.version ?? Constants.manifest?.version ?? '1.0.0';
+  const defaultRemind = s.defaultRemindDaysBefore;
+  const isPreset = PRESET_REMIND_DAYS.includes(defaultRemind as 1 | 7 | 14 | 30);
+  const showCustomInput = !isPreset || customRemindDays !== '';
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.headerBack}
+          activeOpacity={0.7}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <FontAwesome name="chevron-left" size={22} color={theme.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Settings</Text>
+        <View style={styles.headerBack} />
+      </View>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.pageTitle, { color: theme.text }]}>Settings</Text>
-
         {/* Account */}
         <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Account</Text>
         <View style={[styles.card, { backgroundColor: theme.surface }]}>
@@ -280,6 +340,89 @@ export default function SettingsScreen() {
               thumbColor="#fff"
             />
           </View>
+          {s.morningBrief && (
+            <View
+              style={[
+                styles.settingRow,
+                styles.rowBorder,
+                { borderTopColor: theme.border },
+              ]}
+            >
+              <View style={styles.settingLabelWrap}>
+                <Text style={[styles.label, { color: theme.text }]}>
+                  Brief time
+                </Text>
+                <Text style={[styles.subtitle, { color: theme.textTertiary }]}>
+                  When to send the notification
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.timeChip, { backgroundColor: theme.pillBg }]}
+                onPress={() => {
+                  setBriefTimePickerValue(timeStringToDate(s.morningBriefTime ?? '07:00'));
+                  setShowBriefTimePicker(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.timeChipText, { color: theme.text }]}>
+                  {s.morningBriefTime ?? '07:00'}
+                </Text>
+                <FontAwesome name="chevron-right" size={12} color={theme.textTertiary} style={styles.timeChipChevron} />
+              </TouchableOpacity>
+            </View>
+          )}
+          {showBriefTimePicker && Platform.OS === 'android' && (
+            <DateTimePicker
+              value={timeStringToDate(settings?.morningBriefTime ?? '07:00')}
+              mode="time"
+              onChange={(event, date) => {
+                setShowBriefTimePicker(false);
+                if (event.type === 'dismissed' || !date) return;
+                handleMorningBriefTime(dateToTimeString(date));
+              }}
+              textColor="#000000"
+            />
+          )}
+          {showBriefTimePicker && Platform.OS === 'ios' && (
+            <Modal visible transparent animationType="fade">
+              <View style={styles.timePickerModalWrap}>
+                <Pressable
+                  style={[styles.timePickerOverlay, { backgroundColor: 'rgba(0,0,0,0.35)' }]}
+                  onPress={() => setShowBriefTimePicker(false)}
+                />
+                <View style={[styles.timePickerSheet, { backgroundColor: theme.surface }]}>
+                  <View style={[styles.timePickerHeaderCompact, { borderBottomColor: theme.border }]}>
+                    <TouchableOpacity
+                      onPress={() => setShowBriefTimePicker(false)}
+                      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    >
+                      <Text style={[styles.timePickerCancel, { color: theme.textTertiary }]}>Cancel</Text>
+                    </TouchableOpacity>
+                    <Text style={[styles.timePickerTitleCompact, { color: theme.text }]}>Time</Text>
+                    <TouchableOpacity
+                      onPress={async () => {
+                        const timeStr = dateToTimeString(briefTimePickerValue);
+                        await handleMorningBriefTime(timeStr);
+                        setShowBriefTimePicker(false);
+                      }}
+                      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    >
+                      <Text style={[styles.timePickerDone, { color: theme.tint }]}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.timePickerWheelWrap}>
+                    <DateTimePicker
+                      value={briefTimePickerValue}
+                      mode="time"
+                      onChange={(_, date) => date && setBriefTimePickerValue(date)}
+                      display="spinner"
+                      textColor="#000000"
+                    />
+                  </View>
+                </View>
+              </View>
+            </Modal>
+          )}
           <View
             style={[
               styles.settingRow,
@@ -318,16 +461,14 @@ export default function SettingsScreen() {
               </Text>
             </View>
             <View style={styles.pills}>
-              {([7, 14, 30] as const).map((d) => (
+              {PRESET_REMIND_DAYS.map((d) => (
                 <TouchableOpacity
                   key={d}
                   style={[
                     styles.pill,
                     {
                       backgroundColor:
-                        s.defaultRemindDaysBefore === d
-                          ? theme.tint
-                          : theme.pillBg,
+                        defaultRemind === d ? theme.tint : theme.pillBg,
                     },
                   ]}
                   onPress={() => handleDefaultRemind(d)}
@@ -335,17 +476,58 @@ export default function SettingsScreen() {
                   <Text
                     style={[
                       styles.pillText,
-                      {
-                        color:
-                          s.defaultRemindDaysBefore === d ? '#fff' : theme.text,
-                      },
+                      { color: defaultRemind === d ? '#fff' : theme.text },
                     ]}
                   >
-                    {d} days
+                    {d} day{d !== 1 ? 's' : ''}
                   </Text>
                 </TouchableOpacity>
               ))}
+              <TouchableOpacity
+                style={[
+                  styles.pill,
+                  {
+                    backgroundColor:
+                      !isPreset ? theme.tint : theme.pillBg,
+                  },
+                ]}
+                onPress={() => {
+                  if (isPreset) setCustomRemindDays(String(defaultRemind));
+                }}
+              >
+                <Text
+                  style={[
+                    styles.pillText,
+                    { color: !isPreset ? '#fff' : theme.text },
+                  ]}
+                >
+                  Custom
+                </Text>
+              </TouchableOpacity>
             </View>
+            {showCustomInput && (
+              <View style={[styles.customRemindRow, { marginTop: spacing.sm }]}>
+                <Text style={[styles.customRemindLabel, { color: theme.textSecondary }]}>
+                  Days (1–365):
+                </Text>
+                <TextInput
+                  style={[styles.customRemindInput, { color: theme.text, borderColor: theme.border }]}
+                  value={isPreset ? customRemindDays : String(defaultRemind)}
+                  onChangeText={(t) => {
+                    const n = parseInt(t.replace(/\D/g, ''), 10);
+                    if (t === '') setCustomRemindDays('');
+                    else if (!Number.isNaN(n)) {
+                      setCustomRemindDays(String(n));
+                      const clamped = Math.min(365, Math.max(1, n));
+                      if (clamped !== defaultRemind) handleDefaultRemind(clamped);
+                    }
+                  }}
+                  placeholder={String(defaultRemind)}
+                  placeholderTextColor={theme.textTertiary}
+                  keyboardType="number-pad"
+                />
+              </View>
+            )}
           </View>
         </View>
 
@@ -469,14 +651,25 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+  },
+  headerBack: {
+    minWidth: 44,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
   scroll: { flex: 1 },
   scrollContent: { padding: spacing.xl, paddingTop: spacing.lg },
-  pageTitle: {
-    fontSize: 28,
-    fontWeight: '600',
-    letterSpacing: -0.6,
-    marginBottom: spacing.lg,
-  },
   sectionTitle: {
     fontSize: 12,
     fontWeight: '600',
@@ -504,7 +697,12 @@ const styles = StyleSheet.create({
   label: { fontSize: 16, fontWeight: '600' },
   subtitle: { fontSize: 13, marginTop: 2, lineHeight: 18 },
   value: { fontSize: 15, fontWeight: '500' },
-  pills: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  pills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
   pill: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
@@ -516,6 +714,77 @@ const styles = StyleSheet.create({
   actionLabel: { fontSize: 16, fontWeight: '600' },
   actionHint: { fontSize: 13, marginTop: 2 },
   authInput: { borderWidth: 1, borderRadius: radius.lg, padding: spacing.md, fontSize: 16 },
+  timeInput: {
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: 16,
+    minWidth: 80,
+    textAlign: 'center',
+  },
+  timeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.sm,
+    borderRadius: radius.lg,
+    minWidth: 72,
+  },
+  timeChipText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  timeChipChevron: {
+    marginLeft: spacing.xs,
+  },
+  timePickerModalWrap: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  timePickerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  timePickerSheet: {
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    maxHeight: 280,
+    paddingBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  timePickerHeaderCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+  },
+  timePickerCancel: { fontSize: 15 },
+  timePickerTitleCompact: { fontSize: 15, fontWeight: '600' },
+  timePickerDone: { fontSize: 15, fontWeight: '600' },
+  timePickerWheelWrap: {
+    maxHeight: 200,
+  },
+  customRemindRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  customRemindLabel: { fontSize: 14 },
+  customRemindInput: {
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: 16,
+    minWidth: 64,
+  },
   authBtn: { paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, borderRadius: radius.lg, alignItems: 'center' },
   authBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   authBtnRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
