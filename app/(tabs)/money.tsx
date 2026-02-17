@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert } from 'react-native';
+import React, { useRef, useEffect, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, Modal, FlatList } from 'react-native';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useStore } from '@/lib/store';
 import { colors, spacing, radius } from '@/constants/Theme';
@@ -12,11 +12,12 @@ import { SwipeableTransactionRow } from '@/components/SwipeableTransactionRow';
 import { TabScreenAnimation } from '@/components/TabScreenAnimation';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { formatCurrency } from '@/lib/currency';
-import { startOfMonthISO, todayISO } from '@/lib/date';
+import { todayISO, startOfMonthFor, endOfMonthFor, formatMonthYear } from '@/lib/date';
 // import { SubscriptionWasteCard } from '@/components/SubscriptionWasteCard';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { parseStatement, parseStatementFromFileContent } from '@/lib/parseStatement';
+import { isGeminiImportAvailable, parsePdfWithGemini } from '@/lib/geminiImport';
 import { generateId } from '@/lib/id';
 import type { LifeItem, Subscription, Transaction } from '@/lib/types';
 import { handleSmartInput } from '@/lib/smartInput/handleSmartInput';
@@ -30,6 +31,7 @@ export default function MoneyScreen() {
   const subscriptions = useStore((s) => s.subscriptions);
   const setItems = useStore((s) => s.setItems);
   const addTransaction = useStore((s) => s.addTransaction);
+  const addTransactions = useStore((s) => s.addTransactions);
   const deleteTransaction = useStore((s) => s.deleteTransaction);
   const updateTransaction = useStore((s) => s.updateTransaction);
   const setSubscriptions = useStore((s) => s.setSubscriptions);
@@ -47,6 +49,11 @@ export default function MoneyScreen() {
   const [smartInputLoading, setSmartInputLoading] = React.useState(false);
   const [reviewParsed, setReviewParsed] = React.useState<import('@/lib/ai/schemas').SmartInputParseResult | null>(null);
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
+  const [viewAllSpendsVisible, setViewAllSpendsVisible] = React.useState(false);
+  const [spendFilterCategory, setSpendFilterCategory] = React.useState<string>('All');
+  const now = new Date();
+  const [selectedYear, setSelectedYear] = React.useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = React.useState(now.getMonth() + 1);
 
   useEffect(() => {
     load();
@@ -215,23 +222,76 @@ export default function MoneyScreen() {
         copyToCacheDirectory: true,
       });
       if (res.canceled) return;
-      const asset = res.assets[0];
-      const uri = asset.uri;
-      const name = asset.name?.toLowerCase() ?? '';
-      const mimeType = asset.mimeType ?? '';
-      const isPdf = mimeType === 'application/pdf' || name.endsWith('.pdf');
-
-      let content: string;
-      if (isPdf) {
-        setImportMessage('PDF import is not supported in this build. Use CSV or text file, or paste your statement below.');
-        setTimeout(() => setImportMessage(null), 5000);
+      const asset = res.assets?.[0];
+      const uri = asset?.uri;
+      if (!uri) {
+        setImportMessage('Could not get file. Try picking the document again.');
+        setTimeout(() => setImportMessage(null), 4000);
         return;
       }
-      content = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.UTF8 });
+      const name = asset?.name?.toLowerCase() ?? '';
+      const mimeType = asset?.mimeType ?? '';
+      const isPdf = mimeType === 'application/pdf' || name.endsWith('.pdf');
 
+      if (isPdf) {
+        if (!isGeminiImportAvailable()) {
+          setImportMessage('PDF import requires EXPO_PUBLIC_IMPORT_API_URL (backend with Gemini) in .env.');
+          setTimeout(() => setImportMessage(null), 5000);
+          return;
+        }
+        setImportMessage('Sending PDF to parse…');
+        try {
+          const result = await parsePdfWithGemini(uri, asset?.name ?? undefined);
+          let txList = result.transactions;
+          if (txList.length === 0) {
+            setImportMessage(result.warnings?.[0] ?? 'No transactions found in PDF.');
+            setTimeout(() => setImportMessage(null), 4000);
+            return;
+          }
+          const key = (t: { dateISO: string; title: string; amountCents: number }) =>
+            `${t.dateISO}|${(t.title || '').trim()}|${t.amountCents}`;
+          const seen = new Set<string>();
+          txList = txList.filter((t) => {
+            const k = key(t);
+            if (seen.has(k)) return false;
+            seen.add(k);
+            return true;
+          });
+          const existingKeys = new Set(transactions.map((t) => `${t.dateISO}|${(t.title || '').trim()}|${Math.abs(t.amountCents)}`));
+          const toAdd = txList.filter((t) => !existingKeys.has(key({ dateISO: t.dateISO, title: t.title, amountCents: t.amountCents })));
+          const newTxs = toAdd.map((t) => {
+            const signedCents = t.direction === 'credit' ? -Math.abs(t.amountCents) : Math.abs(t.amountCents);
+            return {
+              id: generateId(),
+              title: t.title,
+              amountCents: signedCents,
+              category: t.category ?? 'Other',
+              dateISO: t.dateISO,
+              merchant: t.merchant ?? undefined,
+            };
+          });
+          if (newTxs.length === 0) {
+            setImportMessage('All transactions from PDF were already imported.');
+            setTimeout(() => setImportMessage(null), 4000);
+            return;
+          }
+          await addTransactions(newTxs);
+          setImportMessage(`Added ${newTxs.length} transaction${newTxs.length === 1 ? '' : 's'} from PDF.`);
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : 'PDF import failed. Try again or use CSV/paste.';
+          setImportMessage(msg);
+          setTimeout(() => setImportMessage(null), 5000);
+          return;
+        }
+        setTimeout(() => setImportMessage(null), 3000);
+        return;
+      }
+
+      const encodingUtf8 = FileSystem.EncodingType?.UTF8 ?? 'utf8';
+      const content = await FileSystem.readAsStringAsync(uri, { encoding: encodingUtf8 });
       const parsed = parseStatementFromFileContent(content);
       if (parsed.length === 0) {
-        setImportMessage('No transactions found. Try CSV (Date, Description, Amount), PDF statement, or plain text lines.');
+        setImportMessage('No transactions found. Try CSV (Date, Description, Amount) or plain text lines.');
         setTimeout(() => setImportMessage(null), 4000);
         return;
       }
@@ -252,8 +312,9 @@ export default function MoneyScreen() {
     }
   };
 
-  const monthStart = startOfMonthISO();
-  const monthTransactions = transactions.filter((t) => t.dateISO >= monthStart);
+  const monthStart = startOfMonthFor(selectedYear, selectedMonth);
+  const monthEnd = endOfMonthFor(selectedYear, selectedMonth);
+  const monthTransactions = transactions.filter((t) => t.dateISO >= monthStart && t.dateISO <= monthEnd);
   const monthToDateSpend = monthTransactions.reduce((sum, t) => sum + t.amountCents, 0);
   const transactionsByCategory = monthTransactions.reduce<Record<string, Transaction[]>>((acc, t) => {
     const cat = t.category || 'Other';
@@ -273,24 +334,40 @@ export default function MoneyScreen() {
   }, 0);
   const breakdownRows: { category: string; amountCents: number }[] = [
     ...spendingByCategory,
-    ...(subscriptionMonthlyCents > 0 ? [{ category: 'Subscriptions', amountCents: subscriptionMonthlyCents }] : []),
+    ...(subscriptionMonthlyCents > 0 && subscriptions.length > 0 ? [{ category: 'Subscriptions', amountCents: subscriptionMonthlyCents }] : []),
   ].sort((a, b) => b.amountCents - a.amountCents);
   const [expandedCategory, setExpandedCategory] = React.useState<string | null>(null);
-  const sortedByDate = [...transactions].sort((a, b) => b.dateISO.localeCompare(a.dateISO));
-  const recentTx = sortedByDate.slice(0, 5);
+  const sortedByDateAll = [...transactions].sort((a, b) => b.dateISO.localeCompare(a.dateISO));
+  const recentTx = sortedByDateAll.slice(0, 6);
+  const sortedByDateInSelectedMonth = useMemo(
+    () => [...monthTransactions].sort((a, b) => b.dateISO.localeCompare(a.dateISO)),
+    [monthTransactions]
+  );
+  const allCategories = useMemo(() => {
+    const cats = new Set(monthTransactions.map((t) => t.category || 'Other'));
+    return ['All', ...Array.from(cats).sort()];
+  }, [monthTransactions]);
+  const filteredSpendsForModal = useMemo(() => {
+    if (spendFilterCategory === 'All') return sortedByDateInSelectedMonth;
+    return sortedByDateInSelectedMonth.filter((t) => (t.category || 'Other') === spendFilterCategory);
+  }, [sortedByDateInSelectedMonth, spendFilterCategory]);
 
   const today = todayISO();
   const [y, m] = today.split('-').map(Number);
-  const daysInMonth = new Date(y!, m!, 0).getDate();
-  const dayOfMonth = new Date().getDate();
-  const daysElapsed = Math.min(dayOfMonth, daysInMonth);
+  const isViewingCurrentMonth = selectedYear === y && selectedMonth === m;
+  const daysInSelectedMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+  const daysElapsed = isViewingCurrentMonth
+    ? Math.min(new Date().getDate(), daysInSelectedMonth)
+    : daysInSelectedMonth;
   const avgDailyCents = daysElapsed > 0 ? Math.round(monthToDateSpend / daysElapsed) : 0;
   const topCategory = spendingByCategory[0];
   const biggestTx = monthTransactions.length > 0
     ? monthTransactions.reduce((max, t) => (t.amountCents > max.amountCents ? t : max), monthTransactions[0]!)
     : null;
-  const lastMonthStart = m === 1 ? `${y! - 1}-12-01` : `${y}-${String(m! - 1).padStart(2, '0')}-01`;
-  const lastMonthEnd = m === 1 ? `${y! - 1}-12-31` : new Date(y!, m! - 1, 0).toISOString().slice(0, 10);
+  const prevYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
+  const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
+  const lastMonthStart = startOfMonthFor(prevYear, prevMonth);
+  const lastMonthEnd = endOfMonthFor(prevYear, prevMonth);
   const lastMonthTransactions = transactions.filter((t) => t.dateISO >= lastMonthStart && t.dateISO <= lastMonthEnd);
   const lastMonthSpend = lastMonthTransactions.reduce((sum, t) => sum + t.amountCents, 0);
   const vsLastMonth =
@@ -298,15 +375,51 @@ export default function MoneyScreen() {
       ? Math.round(((monthToDateSpend - lastMonthSpend) / lastMonthSpend) * 100)
       : null;
 
+  const goPrevMonth = () => {
+    if (selectedMonth === 1) {
+      setSelectedMonth(12);
+      setSelectedYear((yr) => yr - 1);
+    } else {
+      setSelectedMonth((mo) => mo - 1);
+    }
+  };
+  const goNextMonth = () => {
+    if (selectedMonth === 12) {
+      setSelectedMonth(1);
+      setSelectedYear((yr) => yr + 1);
+    } else {
+      setSelectedMonth((mo) => mo + 1);
+    }
+  };
+  const isFutureMonth = selectedYear > now.getFullYear() || (selectedYear === now.getFullYear() && selectedMonth > now.getMonth() + 1);
+
   return (
     <TabScreenAnimation>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={[styles.stickyHeader, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+          <Text style={[styles.pageTitle, { color: theme.text }]}>Spend</Text>
+          <View style={styles.monthPickerRow}>
+            <TouchableOpacity onPress={goPrevMonth} hitSlop={12} style={styles.monthPickerBtn}>
+              <Text style={[styles.monthPickerBtnText, { color: theme.tint }]}>‹</Text>
+            </TouchableOpacity>
+            <Text style={[styles.monthPickerLabel, { color: theme.textSecondary }]}>
+              {formatMonthYear(selectedYear, selectedMonth)}
+            </Text>
+            <TouchableOpacity
+              onPress={goNextMonth}
+              hitSlop={12}
+              style={styles.monthPickerBtn}
+              disabled={isFutureMonth}
+            >
+              <Text style={[styles.monthPickerBtnText, { color: isFutureMonth ? theme.textTertiary : theme.tint }]}>›</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
         <ScrollView
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.pageTitle, { color: theme.text }]}>Spend</Text>
         <View style={styles.quickAddWrap}>
           <SmartInputBar
             context="money"
@@ -315,14 +428,13 @@ export default function MoneyScreen() {
           />
         </View>
         <View style={[styles.heroCard, { backgroundColor: theme.surface }]}>
-          <Text style={[styles.heroLabel, { color: theme.textSecondary }]}>This month</Text>
           <Text style={[styles.heroValue, { color: theme.text }]}>{formatCurrency(monthToDateSpend)}</Text>
         </View>
 
         <Text style={[styles.sectionLabel, styles.sectionLabelTop, { color: theme.textSecondary }]}>Import from statement</Text>
         <View style={[styles.statementCard, { backgroundColor: theme.surface }]}>
           <Text style={[styles.statementHint, { color: theme.textTertiary }]}>
-            Pick a file (PDF, CSV, or text), or paste lines below.
+            Pick a file (PDF, CSV, or text).
           </Text>
           <TouchableOpacity
             style={[styles.importButton, { backgroundColor: theme.tint }]}
@@ -330,6 +442,7 @@ export default function MoneyScreen() {
           >
             <Text style={styles.importButtonText}>Pick file</Text>
           </TouchableOpacity>
+          {/* Analyze & add from text — commented out
           <Text style={[styles.statementHint, { color: theme.textTertiary, marginTop: spacing.md }]}>
             Or paste lines: "Starbucks $5.50" or "Shell Gas 45.00"
           </Text>
@@ -348,6 +461,7 @@ export default function MoneyScreen() {
           >
             <Text style={[styles.importButtonText, { color: theme.tint }]}>Analyze & add from text</Text>
           </TouchableOpacity>
+          */}
           {importMessage != null && (
             <Text style={[styles.importMessage, { color: theme.tint }]}>{importMessage}</Text>
           )}
@@ -388,7 +502,7 @@ export default function MoneyScreen() {
         <View style={[styles.spendingCard, { backgroundColor: theme.surface }]}>
           <View style={styles.upcomingHeadlineRow}>
             <Text style={[styles.upcomingHeadline, { color: theme.text }]}>
-              You spent {formatCurrency(monthToDateSpend)} this month
+              You spent {formatCurrency(monthToDateSpend)} in {formatMonthYear(selectedYear, selectedMonth)}
             </Text>
             {breakdownRows.length > 0 && (
               <Text style={[styles.upcomingTapHint, { color: theme.textTertiary }]}>
@@ -396,6 +510,12 @@ export default function MoneyScreen() {
               </Text>
             )}
           </View>
+          <TouchableOpacity
+            style={[styles.viewAllSpendsButton, { backgroundColor: theme.tint }]}
+            onPress={() => { setSpendFilterCategory('All'); setViewAllSpendsVisible(true); }}
+          >
+            <Text style={styles.viewAllSpendsButtonText}>View all spends</Text>
+          </TouchableOpacity>
           {breakdownRows.length > 0 && (
             <View style={styles.breakdown}>
               {breakdownRows.map(({ category, amountCents }, index) => {
@@ -407,7 +527,7 @@ export default function MoneyScreen() {
                   ? []
                   : (transactionsByCategory[category] ?? []).sort((a, b) => b.dateISO.localeCompare(a.dateISO));
                 return (
-                  <View key={category}>
+                  <View key={`breakdown-${index}-${category}`}>
                     <TouchableOpacity
                       activeOpacity={hasExpandable ? 0.7 : 1}
                       onPress={() => hasExpandable && setExpandedCategory((c) => (c === category ? null : category))}
@@ -494,12 +614,12 @@ export default function MoneyScreen() {
           <View style={[styles.analyticsCard, { backgroundColor: theme.surface }]}>
             <Text style={[styles.analyticsLabel, { color: theme.textTertiary }]}>Avg per day</Text>
             <Text style={[styles.analyticsValue, { color: theme.text }]}>{formatCurrency(avgDailyCents)}</Text>
-            <Text style={[styles.analyticsHint, { color: theme.textTertiary }]}>this month</Text>
+            <Text style={[styles.analyticsHint, { color: theme.textTertiary }]}>{formatMonthYear(selectedYear, selectedMonth)}</Text>
           </View>
           <View style={[styles.analyticsCard, { backgroundColor: theme.surface }]}>
             <Text style={[styles.analyticsLabel, { color: theme.textTertiary }]}>Transactions</Text>
             <Text style={[styles.analyticsValue, { color: theme.text }]}>{monthTransactions.length}</Text>
-            <Text style={[styles.analyticsHint, { color: theme.textTertiary }]}>so far</Text>
+            <Text style={[styles.analyticsHint, { color: theme.textTertiary }]}>{formatMonthYear(selectedYear, selectedMonth)}</Text>
           </View>
           {topCategory && (
             <View style={[styles.analyticsCard, { backgroundColor: theme.surface }]}>
@@ -526,11 +646,13 @@ export default function MoneyScreen() {
               </Text>
             </View>
           )}
-          <View style={[styles.analyticsCard, { backgroundColor: theme.surface }]}>
-            <Text style={[styles.analyticsLabel, { color: theme.textTertiary }]}>Recurring</Text>
-            <Text style={[styles.analyticsValue, { color: theme.text }]}>{formatCurrency(subscriptionMonthlyCents)}</Text>
-            <Text style={[styles.analyticsHint, { color: theme.textTertiary }]}>subs / month</Text>
-          </View>
+          {subscriptions.length > 0 && (
+            <View style={[styles.analyticsCard, { backgroundColor: theme.surface }]}>
+              <Text style={[styles.analyticsLabel, { color: theme.textTertiary }]}>Recurring</Text>
+              <Text style={[styles.analyticsValue, { color: theme.text }]}>{formatCurrency(subscriptionMonthlyCents)}</Text>
+              <Text style={[styles.analyticsHint, { color: theme.textTertiary }]}>subs / month</Text>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -565,6 +687,69 @@ export default function MoneyScreen() {
           onClose={() => setReviewParsed(null)}
         />
         <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
+
+        <Modal visible={viewAllSpendsVisible} animationType="slide" onRequestClose={() => setViewAllSpendsVisible(false)}>
+          <View style={[styles.viewAllModalContainer, { backgroundColor: theme.background }]}>
+            <View style={[styles.viewAllModalHeader, { borderBottomColor: theme.border }]}>
+              <Text style={[styles.viewAllModalTitle, { color: theme.text }]}>
+                All spends – {formatMonthYear(selectedYear, selectedMonth)}
+              </Text>
+              <TouchableOpacity onPress={() => setViewAllSpendsVisible(false)} hitSlop={12}>
+                <Text style={[styles.viewAllModalClose, { color: theme.tint }]}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={[styles.viewAllFilterScroll, { borderBottomColor: theme.border }]}
+              contentContainerStyle={styles.viewAllFilterContent}
+            >
+              {allCategories.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => setSpendFilterCategory(cat)}
+                  style={[
+                    styles.viewAllFilterPill,
+                    { backgroundColor: spendFilterCategory === cat ? theme.tint : theme.surface, borderColor: theme.border },
+                  ]}
+                >
+                  <Text style={[styles.viewAllFilterPillText, { color: spendFilterCategory === cat ? '#fff' : theme.text }]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <FlatList
+              data={filteredSpendsForModal}
+              keyExtractor={(t) => t.id}
+              style={styles.viewAllList}
+              contentContainerStyle={styles.viewAllListContent}
+              ListEmptyComponent={
+                <Text style={[styles.viewAllEmpty, { color: theme.textTertiary }]}>
+                  {spendFilterCategory === 'All' ? 'No transactions' : `No ${spendFilterCategory} transactions`}
+                </Text>
+              }
+              renderItem={({ item: t, index }) => (
+                <SwipeableTransactionRow
+                  transaction={t}
+                  isFirst={index === 0}
+                  onPress={() => { setSelectedTransaction(t); setViewAllSpendsVisible(false); }}
+                  onDelete={() => {
+                    Alert.alert('Delete transaction', `Remove "${t.title}"?`, [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Delete', style: 'destructive', onPress: () => deleteTransaction(t.id) },
+                    ]);
+                  }}
+                  dangerColor={theme.danger}
+                  iconColor="#fff"
+                  textColor={theme.text}
+                  metaColor={theme.textTertiary}
+                  borderColor={theme.border}
+                />
+              )}
+            />
+          </View>
+        </Modal>
       </View>
     </TabScreenAnimation>
   );
@@ -572,13 +757,19 @@ export default function MoneyScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  stickyHeader: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+  },
   scroll: { flex: 1 },
   scrollContent: { padding: spacing.xl, paddingTop: spacing.lg },
   pageTitle: {
     fontSize: 28,
     fontWeight: '600',
     letterSpacing: -0.6,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
   },
   quickAddWrap: { marginBottom: spacing.xl },
   heroCard: {
@@ -587,6 +778,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     marginBottom: spacing.xl,
   },
+  monthPickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  monthPickerBtn: { padding: spacing.xs },
+  monthPickerBtnText: { fontSize: 28, fontWeight: '600' },
+  monthPickerLabel: { fontSize: 15, fontWeight: '600' },
   heroLabel: { fontSize: 13, fontWeight: '500', marginBottom: spacing.xs },
   heroValue: { fontSize: 32, fontWeight: '600', letterSpacing: -0.8 },
   sectionLabelTop: { marginTop: spacing.xl, marginBottom: spacing.sm },
@@ -635,6 +834,13 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   upcomingTapHint: { fontSize: 12, marginTop: spacing.xs },
+  viewAllSpendsButton: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    alignItems: 'center',
+  },
+  viewAllSpendsButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   upcomingHint: { fontSize: 13, lineHeight: 18, marginTop: spacing.xs },
   breakdown: { marginTop: spacing.md },
   breakdownRow: {
@@ -703,4 +909,28 @@ const styles = StyleSheet.create({
   txTitle: { fontSize: 15, fontWeight: '500' },
   txMeta: { fontSize: 13, marginTop: 2 },
   txAmount: { fontSize: 15, fontWeight: '500' },
+  viewAllModalContainer: { flex: 1, paddingTop: 48 },
+  viewAllModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+  },
+  viewAllModalTitle: { fontSize: 18, fontWeight: '600' },
+  viewAllModalClose: { fontSize: 16, fontWeight: '500' },
+  viewAllFilterScroll: { borderBottomWidth: 1, maxHeight: 48 },
+  viewAllFilterContent: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: spacing.sm, flexDirection: 'row', alignItems: 'center' },
+  viewAllFilterPill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    marginRight: spacing.sm,
+  },
+  viewAllFilterPillText: { fontSize: 14, fontWeight: '500' },
+  viewAllList: { flex: 1 },
+  viewAllListContent: { paddingBottom: spacing.xl },
+  viewAllEmpty: { fontSize: 15, textAlign: 'center', marginTop: spacing.xl },
 });

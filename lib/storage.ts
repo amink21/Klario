@@ -10,12 +10,10 @@ import {
   deleteLifeItem as sbDeleteLifeItem,
   fetchTransactions,
   insertTransaction as sbInsertTransaction,
+  insertTransactions as sbInsertTransactions,
   setTransactions as sbSetTransactions,
   deleteTransaction as sbDeleteTransaction,
   updateTransaction as sbUpdateTransaction,
-  fetchSubscriptions,
-  insertSubscription as sbInsertSubscription,
-  setSubscriptions as sbSetSubscriptions,
   fetchSettings as sbFetchSettings,
   upsertSettings as sbUpsertSettings,
 } from './supabase-data';
@@ -31,6 +29,13 @@ const KEYS = {
 /** When Supabase is configured, all data goes through Supabase. */
 function useSupabase(): boolean {
   return !!supabase;
+}
+
+/** Use Supabase only when configured and user is signed in; otherwise use local storage. */
+async function useSupabaseAuth(): Promise<boolean> {
+  if (!supabase) return false;
+  const uid = await getUserId();
+  return !!uid;
 }
 
 /** Local cache and persistence only when Supabase is not configured. */
@@ -78,13 +83,13 @@ async function persist(): Promise<void> {
 
 // --- Life items ---
 export async function getLifeItems(): Promise<LifeItem[]> {
-  if (useSupabase()) return fetchLifeItems();
+  if (await useSupabaseAuth()) return fetchLifeItems();
   await loadAll();
   return [...cache.items];
 }
 
 export async function setLifeItems(items: LifeItem[]): Promise<void> {
-  if (useSupabase()) {
+  if (await useSupabaseAuth()) {
     await sbSetLifeItems(items);
     return;
   }
@@ -94,7 +99,7 @@ export async function setLifeItems(items: LifeItem[]): Promise<void> {
 }
 
 export async function addLifeItem(item: LifeItem): Promise<void> {
-  if (useSupabase()) {
+  if (await useSupabaseAuth()) {
     await sbInsertLifeItem(item);
     return;
   }
@@ -104,7 +109,7 @@ export async function addLifeItem(item: LifeItem): Promise<void> {
 }
 
 export async function updateLifeItem(id: string, patch: Partial<LifeItem>): Promise<void> {
-  if (useSupabase()) {
+  if (await useSupabaseAuth()) {
     await sbUpdateLifeItem(id, patch);
     return;
   }
@@ -116,7 +121,7 @@ export async function updateLifeItem(id: string, patch: Partial<LifeItem>): Prom
 }
 
 export async function getLifeItem(id: string): Promise<LifeItem | null> {
-  if (useSupabase()) {
+  if (await useSupabaseAuth()) {
     const items = await fetchLifeItems();
     return items.find((x) => x.id === id) ?? null;
   }
@@ -125,7 +130,7 @@ export async function getLifeItem(id: string): Promise<LifeItem | null> {
 }
 
 export async function deleteLifeItem(id: string): Promise<void> {
-  if (useSupabase()) {
+  if (await useSupabaseAuth()) {
     await sbDeleteLifeItem(id);
     return;
   }
@@ -136,13 +141,13 @@ export async function deleteLifeItem(id: string): Promise<void> {
 
 // --- Transactions ---
 export async function getTransactions(): Promise<Transaction[]> {
-  if (useSupabase()) return fetchTransactions();
+  if (await useSupabaseAuth()) return fetchTransactions();
   await loadAll();
   return [...cache.transactions];
 }
 
 export async function addTransaction(tx: Transaction): Promise<void> {
-  if (useSupabase()) {
+  if (await useSupabaseAuth()) {
     await sbInsertTransaction(tx);
     return;
   }
@@ -151,8 +156,20 @@ export async function addTransaction(tx: Transaction): Promise<void> {
   await persist();
 }
 
+/** Add multiple transactions in one go (e.g. after PDF import). Use batch insert when Supabase is active. */
+export async function addTransactions(txs: Transaction[]): Promise<void> {
+  if (txs.length === 0) return;
+  if (await useSupabaseAuth()) {
+    await sbInsertTransactions(txs);
+    return;
+  }
+  await loadAll();
+  for (const tx of txs) cache.transactions.unshift(tx);
+  await persist();
+}
+
 export async function setTransactions(txs: Transaction[]): Promise<void> {
-  if (useSupabase()) {
+  if (await useSupabaseAuth()) {
     await sbSetTransactions(txs);
     return;
   }
@@ -162,7 +179,7 @@ export async function setTransactions(txs: Transaction[]): Promise<void> {
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
-  if (useSupabase()) {
+  if (await useSupabaseAuth()) {
     await sbDeleteTransaction(id);
     return;
   }
@@ -172,7 +189,7 @@ export async function deleteTransaction(id: string): Promise<void> {
 }
 
 export async function updateTransaction(tx: Transaction): Promise<void> {
-  if (useSupabase()) {
+  if (await useSupabaseAuth()) {
     await sbUpdateTransaction(tx);
     return;
   }
@@ -184,28 +201,19 @@ export async function updateTransaction(tx: Transaction): Promise<void> {
   }
 }
 
-// --- Subscriptions ---
+// --- Subscriptions (local only; not synced to Supabase) ---
 export async function getSubscriptions(): Promise<Subscription[]> {
-  if (useSupabase()) return fetchSubscriptions();
   await loadAll();
   return [...cache.subscriptions];
 }
 
 export async function setSubscriptions(subs: Subscription[]): Promise<void> {
-  if (useSupabase()) {
-    await sbSetSubscriptions(subs);
-    return;
-  }
   await loadAll();
   cache.subscriptions = subs;
   await persist();
 }
 
 export async function addSubscription(sub: Subscription): Promise<void> {
-  if (useSupabase()) {
-    await sbInsertSubscription(sub);
-    return;
-  }
   await loadAll();
   cache.subscriptions.push(sub);
   await persist();
@@ -220,7 +228,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
 };
 
 export async function getSettings(): Promise<SettingsState> {
-  if (useSupabase()) {
+  if (await useSupabaseAuth()) {
     const remote = await sbFetchSettings();
     return remote ?? DEFAULT_SETTINGS;
   }
@@ -229,7 +237,7 @@ export async function getSettings(): Promise<SettingsState> {
 }
 
 export async function setSettings(settings: SettingsState): Promise<void> {
-  if (useSupabase()) {
+  if (await useSupabaseAuth()) {
     await sbUpsertSettings(settings);
     return;
   }
@@ -240,7 +248,7 @@ export async function setSettings(settings: SettingsState): Promise<void> {
 
 // --- Seed flag ---
 export async function hasSeeded(): Promise<boolean> {
-  if (useSupabase()) {
+  if (await useSupabaseAuth()) {
     const s = await getSettings();
     return s.hasSeeded ?? false;
   }
@@ -249,7 +257,7 @@ export async function hasSeeded(): Promise<boolean> {
 }
 
 export async function setSeeded(): Promise<void> {
-  if (useSupabase()) {
+  if (await useSupabaseAuth()) {
     const current = await getSettings();
     await sbUpsertSettings({ ...current, hasSeeded: true });
     return;
@@ -263,7 +271,6 @@ export async function resetAllData(): Promise<void> {
   if (supabase && uid) {
     await supabase.from('life_items').delete().eq('user_id', uid);
     await supabase.from('transactions').delete().eq('user_id', uid);
-    await supabase.from('subscriptions').delete().eq('user_id', uid);
     await supabase.from('settings').delete().eq('user_id', uid);
   }
   cache = {

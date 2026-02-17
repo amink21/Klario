@@ -215,6 +215,24 @@ export async function insertTransaction(tx: Transaction): Promise<void> {
   if (error) throw error;
 }
 
+/** Insert multiple transactions in one request (e.g. after PDF import). */
+export async function insertTransactions(txs: Transaction[]): Promise<void> {
+  if (txs.length === 0) return;
+  const uid = await getUserId();
+  if (!supabase || !uid) throw new Error("Not authenticated");
+  const rows = txs.map((tx) => ({
+    id: tx.id,
+    user_id: uid,
+    title: tx.title,
+    amount_cents: tx.amountCents,
+    category: tx.category,
+    date_iso: tx.dateISO,
+    merchant: tx.merchant ?? null,
+  }));
+  const { error } = await supabase.from("transactions").insert(rows);
+  if (error) throw error;
+}
+
 export async function setTransactions(txs: Transaction[]): Promise<void> {
   const uid = await getUserId();
   if (!supabase || !uid) throw new Error("Not authenticated");

@@ -5,6 +5,7 @@ import {
   setLifeItems,
   getTransactions,
   addTransaction as addTxStorage,
+  addTransactions as addTxStorageBatch,
   deleteTransaction as deleteTxStorage,
   updateTransaction as updateTxStorage,
   getSubscriptions,
@@ -22,6 +23,7 @@ interface AppState {
   load: () => Promise<void>;
   setItems: (items: LifeItem[]) => Promise<void>;
   addTransaction: (tx: Transaction) => Promise<void>;
+  addTransactions: (txs: Transaction[]) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   updateTransaction: (tx: Transaction) => Promise<void>;
   setSubscriptions: (subs: Subscription[]) => Promise<void>;
@@ -66,6 +68,12 @@ export const useStore = create<AppState>((set, get) => ({
   addTransaction: async (tx) => {
     await addTxStorage(tx);
     set((s) => ({ transactions: [tx, ...s.transactions] }));
+  },
+
+  addTransactions: async (txs) => {
+    await addTxStorageBatch(txs);
+    const fresh = await getTransactions();
+    set({ transactions: fresh });
   },
 
   deleteTransaction: async (id) => {

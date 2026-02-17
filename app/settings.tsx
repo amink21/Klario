@@ -30,7 +30,6 @@ import {
 import {
   demoLifeItems,
   demoTransactions,
-  demoSubscriptions,
   defaultSettings,
 } from '@/lib/seed';
 import {
@@ -40,11 +39,6 @@ import {
   setSettings,
 } from '@/lib/storage';
 import Constants from 'expo-constants';
-import {
-  runAITest,
-  runAllAITests,
-  runMorningBriefTest,
-} from '@/lib/ai/testHelpers';
 import { updateMorningBriefSchedule } from '@/lib/notifications';
 import { normalizeDueTime } from '@/lib/date';
 
@@ -70,8 +64,8 @@ export default function SettingsScreen() {
   const router = useRouter();
   const settings = useStore((s) => s.settings);
   const setSettingsStore = useStore((s) => s.setSettings);
+  const setSubscriptionsStore = useStore((s) => s.setSubscriptions);
   const load = useStore((s) => s.load);
-  const [aiTestLoading, setAiTestLoading] = useState(false);
   const [customRemindDays, setCustomRemindDays] = useState<string>('');
   const { session, signInWithPassword, signUp, signOut } = useAuth();
   const [authEmail, setAuthEmail] = useState('');
@@ -165,9 +159,27 @@ export default function SettingsScreen() {
             await resetAllData();
             await setLifeItems(demoLifeItems());
             await setTransactions(demoTransactions());
-            await setSubscriptions(demoSubscriptions());
+            await setSubscriptions([]);
             await setSettings(defaultSettings());
             await setSeeded();
+            await load();
+          },
+        },
+      ]
+    );
+  };
+
+  const handleClearSubscriptions = () => {
+    Alert.alert(
+      'Clear subscriptions',
+      'Remove all subscriptions from this device? This does not affect transactions.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            await setSubscriptionsStore([]);
             await load();
           },
         },
@@ -193,48 +205,8 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleTestAI = async () => {
-    setAiTestLoading(true);
-    try {
-      const result = await runAITest();
-      Alert.alert(
-        result.ok ? 'AI test (Smart Add)' : 'AI error',
-        result.ok ? result.message : result.error
-      );
-    } finally {
-      setAiTestLoading(false);
-    }
-  };
-
-  const handleTestMorningBrief = async () => {
-    setAiTestLoading(true);
-    try {
-      const result = await runMorningBriefTest();
-      Alert.alert(
-        result.ok ? 'Morning brief' : 'AI error',
-        result.ok ? result.message : result.error
-      );
-    } finally {
-      setAiTestLoading(false);
-    }
-  };
-
-  const handleTestAllAI = async () => {
-    setAiTestLoading(true);
-    try {
-      const result = await runAllAITests();
-      Alert.alert(
-        result.ok ? 'All AI features' : 'AI error',
-        result.ok ? result.message : result.error
-      );
-    } finally {
-      setAiTestLoading(false);
-    }
-  };
-
   const s = settings ?? defaultSettings();
-  const appVersion =
-    Constants.expoConfig?.version ?? Constants.manifest?.version ?? '1.0.0';
+  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
   const defaultRemind = s.defaultRemindDaysBefore;
   const isPreset = PRESET_REMIND_DAYS.includes(defaultRemind as 1 | 7 | 14 | 30);
   const showCustomInput = !isPreset || customRemindDays !== '';
@@ -554,6 +526,22 @@ export default function SettingsScreen() {
               styles.actionRowBorder,
               { borderTopColor: theme.border },
             ]}
+            onPress={handleClearSubscriptions}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.actionLabel, { color: theme.text }]}>
+              Clear subscriptions
+            </Text>
+            <Text style={[styles.actionHint, { color: theme.textTertiary }]}>
+              Remove all subscriptions (e.g. dummy data)
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.actionRow,
+              styles.actionRowBorder,
+              { borderTopColor: theme.border },
+            ]}
             onPress={handleClearAllData}
             activeOpacity={0.7}
           >
@@ -589,60 +577,6 @@ export default function SettingsScreen() {
               {appVersion}
             </Text>
           </View>
-        </View>
-
-        {/* Developer – Test AI */}
-        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-          Developer
-        </Text>
-        <View style={[styles.card, { backgroundColor: theme.surface }]}>
-          <TouchableOpacity
-            style={styles.actionRow}
-            onPress={handleTestAI}
-            disabled={aiTestLoading}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.actionLabel, { color: theme.tint }]}>
-              {aiTestLoading ? 'Testing…' : 'Test AI (Smart Add)'}
-            </Text>
-            <Text style={[styles.actionHint, { color: theme.textTertiary }]}>
-              Parse “Car insurance March 12 yearly $1400”
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.actionRow,
-              styles.actionRowBorder,
-              { borderTopColor: theme.border },
-            ]}
-            onPress={handleTestMorningBrief}
-            disabled={aiTestLoading}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.actionLabel, { color: theme.tint }]}>
-              Test morning brief
-            </Text>
-            <Text style={[styles.actionHint, { color: theme.textTertiary }]}>
-              Generate 1–4 calm summary lines
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.actionRow,
-              styles.actionRowBorder,
-              { borderTopColor: theme.border },
-            ]}
-            onPress={handleTestAllAI}
-            disabled={aiTestLoading}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.actionLabel, { color: theme.tint }]}>
-              Test all AI features
-            </Text>
-            <Text style={[styles.actionHint, { color: theme.textTertiary }]}>
-              Smart Add + category + brief + subscription (one summary)
-            </Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>

@@ -70,7 +70,7 @@ function RootLayoutNav() {
       if (!seeded) {
         await setLifeItems(demoLifeItems());
         await setTransactions(demoTransactions());
-        await setSubscriptions(demoSubscriptions());
+        await setSubscriptions([]);
         await setSettings(defaultSettings());
         await setSeeded();
       }

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FAQ – Klario</title>
+  <link rel="icon" type="image/svg+xml" href="images/bear-png.svg" />
+  <link rel="apple-touch-icon" href="images/bear-png.svg" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a href="index.html" class="logo">
+        <img src="images/bear-png.svg" alt="" class="logo-icon" width="36" height="36" />
+        <span>Klario</span>
+      </a>
+      <nav class="nav-links">
+        <a href="faq.html">FAQ</a>
+        <a href="support.html">Support</a>
+        <a href="privacy.html">Privacy</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1 class="page-title">Frequently asked questions</h1>
+    <p class="subtitle">Everything you need to know about Klario.</p>
+
+    <section id="what-is-klario" class="content-section">
+      <h2>What is Klario?</h2>
+      <p>Klario is an app that helps you manage life admin in one place: reminders and due dates (bills, renewals, tasks), spending and transaction breakdown by month and category, and a list of subscriptions. You can add items with natural language, import from bank statements (PDF/CSV), and optionally sign in to sync data across devices. It’s designed to be simple and clutter-free.</p>
+    </section>
+
+    <section id="how-add-reminder" class="content-section">
+      <h2>How do I add a reminder or bill?</h2>
+      <p>Open the app and use the smart input at the top. Type something like “Car insurance due March 12” or “Netflix $15 monthly”. The app will parse it and suggest an item. You can also use “Add item” to set a title, due date, and how many days before you want to be reminded. You can choose a default reminder lead time (e.g. 1, 7, 14, or 30 days) in Settings.</p>
+    </section>
+
+    <section id="how-import" class="content-section">
+      <h2>How do I import transactions from a statement?</h2>
+      <p>On the Spend tab, tap “Pick file” to choose a PDF, CSV, or text file from your device. The app will try to extract transaction lines and add them with date, title, and amount. For PDFs, a backend with PDF parsing may be used. You can also paste lines of text (e.g. “Starbucks $5.50”) in the import area if your version supports “Analyze & add from text”. Imported transactions appear in Recent and in the spending breakdown for the selected month.</p>
+    </section>
+
+    <section id="spending-breakdown" class="content-section">
+      <h2>How does the spending breakdown work?</h2>
+      <p>Spending is shown by calendar month. Use the month picker in the header to switch months (e.g. January, February). The breakdown shows categories (Food, Transport, etc.) and optional Subscriptions if you’ve added any. Tap a category to expand and see transactions. “View all spends” opens a list of all transactions for that month, with a category filter. Insights (avg per day, transaction count, top category, largest spend, vs last month) are all based on the selected month.</p>
+    </section>
+
+    <section id="subscriptions" class="content-section">
+      <h2>How do subscriptions work?</h2>
+      <p>Subscriptions are stored only on your device (not synced to the cloud). You can add them manually or via smart input (e.g. “Netflix $15 monthly”). They appear in the spending breakdown under “Subscriptions” and in the Recurring insight if you have any. To remove all subscriptions (e.g. old demo data), go to Settings → Data → Clear subscriptions.</p>
+    </section>
+
+    <section id="is-it-free" class="content-section">
+      <h2>Is there a free plan?</h2>
+      <p>You can use Klario for free. Download the app and start adding reminders, transactions, and subscriptions without an account. Signing in is optional and enables cloud sync. There are no in-app purchases required for core features.</p>
+    </section>
+
+    <section id="where-data" class="content-section">
+      <h2>Where is my data stored?</h2>
+      <p>If you don’t sign in, all data (items, transactions, settings) stays on your device. If you sign in, items, transactions, and settings can be synced to our servers so you can access them from another device. Subscriptions are always stored only on the device. For details, see our <a href="privacy.html">Privacy Policy</a>.</p>
+    </section>
+
+    <section id="sync" class="content-section">
+      <h2>How do I sync my data?</h2>
+      <p>Open Settings and sign in with email and password. Once signed in, your reminders (life items), transactions, and app settings sync to the cloud. Subscriptions do not sync. Signing out stops sync; your data remains on the server until you delete your account or we purge it per our policy.</p>
+    </section>
+
+    <section id="clear-data" class="content-section">
+      <h2>How do I clear subscriptions or reset data?</h2>
+      <p>In the app: Settings → Data. “Clear subscriptions” removes all subscriptions from the device. “Reset demo data” replaces your data with sample items and transactions (and clears subscriptions). “Clear all data” permanently deletes everything on the device. These actions cannot be undone.</p>
+    </section>
+
+    <section id="notifications" class="content-section">
+      <h2>What are Morning brief and Due item reminders?</h2>
+      <p>Morning brief is an optional daily notification at a time you set (e.g. 7:00 AM). It sends a short, calm summary of what’s due and upcoming. Due item reminders are notifications fired a set number of days before each item’s due date (e.g. 1 or 7 days before). You can turn both on or off in Settings → Notifications and set a default reminder lead time for new items.</p>
+    </section>
+
+    <section id="categories" class="content-section">
+      <h2>What categories can I use for spending?</h2>
+      <p>Transactions can use categories like Food, Transport, Subscriptions, Insurance, Health, Utilities, Housing, Entertainment, and Other. When you add or import transactions, the app may suggest a category; you can change it when editing a transaction. The spending breakdown and “View all spends” filter by these categories.</p>
+    </section>
+
+    <section id="contact" class="content-section">
+      <h2>How do I contact support?</h2>
+      <p>For bugs, feature requests, or other questions, email <a href="mailto:support@klario.app">support@klario.app</a>. For privacy-related questions, see our <a href="privacy.html">Privacy Policy</a> or email <a href="mailto:privacy@klario.app">privacy@klario.app</a>.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-main">
+        <div class="footer-grid">
+          <div class="footer-col">
+            <h4>Product</h4>
+            <ul>
+              <li><a href="index.html#download">Download</a></li>
+              <li><a href="faq.html">FAQ</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h4>Resources</h4>
+            <ul>
+              <li><a href="faq.html">FAQ</a></li>
+              <li><a href="privacy.html">Privacy Policy</a></li>
+              <li><a href="support.html">Support</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h4>Company</h4>
+            <ul>
+              <li><a href="mailto:support@klario.app">Contact</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>© 2026 Klario. All rights reserved. · Life, bills &amp; spend in one place.</p>
+        </div>
+      </div>
+      <img src="images/bear-png.svg" alt="" class="footer-bear" width="160" height="160" />
+    </div>
+  </footer>
+</body>
+</html>

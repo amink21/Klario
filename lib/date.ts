@@ -139,6 +139,40 @@ export function startOfMonthISO(): string {
 }
 
 /**
+ * Date 30 days ago (YYYY-MM-DD). Use for "last 30 days" spending window.
+ */
+export function thirtyDaysAgoISO(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * First day of a given month (YYYY-MM-DD). month is 1–12.
+ */
+export function startOfMonthFor(year: number, month: number): string {
+  return `${year}-${String(month).padStart(2, '0')}-01`;
+}
+
+/**
+ * Last day of a given month (YYYY-MM-DD). month is 1–12.
+ */
+export function endOfMonthFor(year: number, month: number): string {
+  const last = new Date(year, month, 0);
+  const y = last.getFullYear();
+  const m = String(last.getMonth() + 1).padStart(2, '0');
+  const d = String(last.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Display label for a month, e.g. "January 2026".
+ */
+export function formatMonthYear(year: number, month: number): string {
+  return new Date(year, month - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+}
+
+/**
  * Format 24h time "HH:mm" or "HH:mm:ss" for display: "7:00 PM", "1:00 AM".
  */
 export function formatTimeHHMM(hhmm: string): string {
