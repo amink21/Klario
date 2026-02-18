@@ -16,6 +16,7 @@ export function defaultSettings(): SettingsState {
     morningBriefTime: '07:00',
     dueItemReminders: true,
     defaultRemindDaysBefore: 1,
+    smartNudges: true,
   };
 }
 

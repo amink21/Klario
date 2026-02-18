@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useColorScheme } from '@/components/useColorScheme';
 import { colors, spacing, radius } from '@/constants/Theme';
 import { formatDueIn, daysUntil, formatTimeHHMM, getDueTimestamp } from '@/lib/date';
@@ -12,9 +13,11 @@ interface UpcomingListProps {
   /** 0 = today only, 7/14/30 = within that many days. Default 14. */
   withinDays?: number;
   onItemPress?: (item: LifeItem) => void;
+  /** When provided, shows a check circle to mark the reminder as done. */
+  onMarkDone?: (item: LifeItem) => void;
 }
 
-export function UpcomingList({ items, limit = 5, withinDays = 14, onItemPress }: UpcomingListProps) {
+export function UpcomingList({ items, limit = 5, withinDays = 14, onItemPress, onMarkDone }: UpcomingListProps) {
   const colorScheme = useColorScheme();
   const theme = colors[colorScheme ?? 'light'];
   const sorted = [...items]
@@ -43,27 +46,41 @@ export function UpcomingList({ items, limit = 5, withinDays = 14, onItemPress }:
         </Text>
       ) : (
         deduped.map((item, index) => (
-          <TouchableOpacity
+          <View
             key={`${item.id}-${index}`}
             style={[styles.row, index > 0 && [styles.rowNotFirst, { borderTopColor: theme.border }]]}
-            onPress={() => onItemPress?.(item)}
-            activeOpacity={0.6}
           >
-            <View style={styles.rowLeft}>
-              <Text style={[styles.itemTitle, { color: theme.text }]} numberOfLines={1}>
-                {item.title}
-              </Text>
-              <Text style={[styles.dueIn, { color: theme.textTertiary }]}>
-                {formatDueIn(item.nextDueISO, item.dueTime)}
-                {item.dueTime ? ` at ${formatTimeHHMM(item.dueTime)}` : ''}
-              </Text>
-            </View>
-            {item.amountCents != null && (
-              <Text style={[styles.amount, { color: theme.textSecondary }]}>
-                {formatCurrency(item.amountCents)}
-              </Text>
+            {onMarkDone && (
+              <TouchableOpacity
+                style={[styles.checkWrap, { backgroundColor: theme.accentPill }]}
+                onPress={() => onMarkDone(item)}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <FontAwesome name="check" size={14} color={theme.tint} />
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.rowMain}
+              onPress={() => onItemPress?.(item)}
+              activeOpacity={0.6}
+            >
+              <View style={styles.rowLeft}>
+                <Text style={[styles.itemTitle, { color: theme.text }]} numberOfLines={1}>
+                  {item.title}
+                </Text>
+                <Text style={[styles.dueIn, { color: theme.textTertiary }]}>
+                  {formatDueIn(item.nextDueISO, item.dueTime)}
+                  {item.dueTime ? ` at ${formatTimeHHMM(item.dueTime)}` : ''}
+                </Text>
+              </View>
+              {item.amountCents != null && (
+                <Text style={[styles.amount, { color: theme.textSecondary }]}>
+                  {formatCurrency(item.amountCents)}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
         ))
       )}
     </View>
@@ -81,13 +98,26 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: spacing.md,
   },
   rowNotFirst: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.04)',
+  },
+  checkWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+  rowMain: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   rowLeft: { flex: 1 },
   itemTitle: { fontSize: 16, fontWeight: '500', letterSpacing: -0.3 },

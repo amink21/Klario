@@ -17,6 +17,7 @@ import { todayISO, startOfMonthFor, endOfMonthFor, formatMonthYear } from '@/lib
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { parseStatement, parseStatementFromFileContent } from '@/lib/parseStatement';
+import { setLastImportISO } from '@/lib/nudges';
 import { isGeminiImportAvailable, parsePdfWithGemini } from '@/lib/geminiImport';
 import { generateId } from '@/lib/id';
 import type { LifeItem, Subscription, Transaction } from '@/lib/types';
@@ -178,13 +179,14 @@ export default function MoneyScreen() {
     const { scheduleDueReminder, cancelScheduledNotification } = await import('@/lib/notifications');
     const existing = await getLifeItem(id);
     if (!existing) return;
-    if (patch.status === 'cancelled' && existing.notificationId) {
+    const becomingCompletedOrCancelled = patch.status === 'cancelled' || patch.status === 'completed';
+    if (becomingCompletedOrCancelled && existing.notificationId) {
       await cancelScheduledNotification(existing.notificationId);
     }
     let notificationId = existing.notificationId ?? undefined;
     const nextDue = patch.nextDueISO ?? existing.nextDueISO;
     const remindDays = patch.remindDaysBefore ?? existing.remindDaysBefore;
-    if (patch.status !== 'cancelled' && remindDays > 0) {
+    if (!becomingCompletedOrCancelled && remindDays > 0) {
       if (existing.notificationId) await cancelScheduledNotification(existing.notificationId);
       notificationId =
         (await scheduleDueReminder(id, patch.title ?? existing.title, nextDue, remindDays, patch.dueTime ?? existing.dueTime ?? undefined, patch.remindMinutesBefore ?? existing.remindMinutesBefore ?? 30)) ?? undefined;
@@ -212,6 +214,7 @@ export default function MoneyScreen() {
     }
     setStatementText('');
     setImportMessage(`Added ${parsed.length} transaction${parsed.length === 1 ? '' : 's'}.`);
+    setLastImportISO(todayISO());
     setTimeout(() => setImportMessage(null), 3000);
   };
 
@@ -276,6 +279,7 @@ export default function MoneyScreen() {
             return;
           }
           await addTransactions(newTxs);
+          setLastImportISO(todayISO());
           setImportMessage(`Added ${newTxs.length} transaction${newTxs.length === 1 ? '' : 's'} from PDF.`);
         } catch (e) {
           const msg = e instanceof Error ? e.message : 'PDF import failed. Try again or use CSV/paste.';
@@ -304,6 +308,7 @@ export default function MoneyScreen() {
           dateISO: p.dateISO,
         });
       }
+      setLastImportISO(todayISO());
       setImportMessage(`Added ${parsed.length} transaction${parsed.length === 1 ? '' : 's'} from file.`);
       setTimeout(() => setImportMessage(null), 3000);
     } catch (e) {

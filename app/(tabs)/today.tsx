@@ -31,6 +31,8 @@ export default function TodayScreen() {
   const addTransaction = useStore((s) => s.addTransaction);
   const setSubscriptions = useStore((s) => s.setSubscriptions);
   const load = useStore((s) => s.load);
+  const deepLinkItemId = useStore((s) => s.deepLinkItemId);
+  const setDeepLinkItemId = useStore((s) => s.setDeepLinkItemId);
 
   const addItemRef = useRef<BottomSheet>(null);
   const datePickerRef = useRef<BottomSheet>(null);
@@ -49,6 +51,17 @@ export default function TodayScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Deep link: open item sheet when navigated from due-reminder notification.
+  useEffect(() => {
+    if (!deepLinkItemId || items.length === 0) return;
+    const item = items.find((i) => i.id === deepLinkItemId);
+    if (item) {
+      setSelectedItem(item);
+      addItemRef.current?.snapToIndex(0);
+    }
+    setDeepLinkItemId(null);
+  }, [deepLinkItemId, items, setDeepLinkItemId]);
 
   const activeItems = items.filter((i) => i.status === 'active');
   const upcoming30 = computeUpcomingBreakdown(activeItems, subscriptions, 30);
@@ -101,13 +114,14 @@ export default function TodayScreen() {
     const { scheduleDueReminder, cancelScheduledNotification } = await import('@/lib/notifications');
     const existing = await getLifeItem(id);
     if (!existing) return;
-    if (patch.status === 'cancelled' && existing.notificationId) {
+    const becomingCompletedOrCancelled = patch.status === 'cancelled' || patch.status === 'completed';
+    if (becomingCompletedOrCancelled && existing.notificationId) {
       await cancelScheduledNotification(existing.notificationId);
     }
     let notificationId = existing.notificationId ?? undefined;
     const nextDue = patch.nextDueISO ?? existing.nextDueISO;
     const remindDays = patch.remindDaysBefore ?? existing.remindDaysBefore;
-    if (patch.status !== 'cancelled' && remindDays > 0) {
+    if (!becomingCompletedOrCancelled && remindDays > 0) {
       if (existing.notificationId) await cancelScheduledNotification(existing.notificationId);
       notificationId =
         (await scheduleDueReminder(id, patch.title ?? existing.title, nextDue, remindDays, patch.dueTime ?? existing.dueTime ?? undefined, patch.remindMinutesBefore ?? existing.remindMinutesBefore ?? 30)) ?? undefined;
@@ -116,6 +130,16 @@ export default function TodayScreen() {
     const updated = items.map((i) => (i.id === id ? { ...i, ...patch, notificationId } : i));
     await setItems(updated);
     setSelectedItem(null);
+  };
+
+  const handleMarkDone = async (item: LifeItem) => {
+    if (item.cadence === 'one_time') {
+      await handleUpdateItem(item.id, { status: 'completed' });
+      return;
+    }
+    const { addCadenceToDate } = await import('@/lib/date');
+    const nextDue = addCadenceToDate(item.nextDueISO, item.cadence);
+    await handleUpdateItem(item.id, { nextDueISO: nextDue });
   };
 
   const runExecute = async (
@@ -308,6 +332,7 @@ export default function TodayScreen() {
             setSelectedItem(item);
             addItemRef.current?.snapToIndex(0);
           }}
+          onMarkDone={handleMarkDone}
         />
 
         {/* Upcoming Money — tappable card; tap reveals breakdown */}

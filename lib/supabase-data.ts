@@ -71,6 +71,7 @@ function rowToSettings(r: DbSettings): SettingsState {
       const n = Number(r.default_remind_days_before ?? 1);
       return n >= 1 && n <= 365 ? n : 1;
     })(),
+    smartNudges: r.smart_nudges !== false,
     hasSeeded: Boolean(r.has_seeded ?? false),
   };
 }
@@ -359,6 +360,7 @@ export async function upsertSettings(settings: SettingsState): Promise<void> {
     morning_brief_time: settings.morningBriefTime ?? '07:00',
     due_item_reminders: settings.dueItemReminders,
     default_remind_days_before: settings.defaultRemindDaysBefore,
+    smart_nudges: settings.smartNudges !== false,
     has_seeded: settings.hasSeeded ?? false,
   };
   const { error } = await supabase

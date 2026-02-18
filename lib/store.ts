@@ -20,6 +20,12 @@ interface AppState {
   subscriptions: Subscription[];
   settings: SettingsState | null;
   loaded: boolean;
+  /** When true, show the morning brief modal (e.g. from notification tap). */
+  showMorningBriefModal: boolean;
+  setShowMorningBriefModal: (show: boolean) => void;
+  /** When set, open this item in the item sheet (e.g. from due-reminder notification). */
+  deepLinkItemId: string | null;
+  setDeepLinkItemId: (id: string | null) => void;
   load: () => Promise<void>;
   setItems: (items: LifeItem[]) => Promise<void>;
   addTransaction: (tx: Transaction) => Promise<void>;
@@ -37,6 +43,10 @@ export const useStore = create<AppState>((set, get) => ({
   subscriptions: [],
   settings: null,
   loaded: false,
+  showMorningBriefModal: false,
+  setShowMorningBriefModal: (show) => set({ showMorningBriefModal: show }),
+  deepLinkItemId: null,
+  setDeepLinkItemId: (id) => set({ deepLinkItemId: id }),
 
   load: async () => {
     const [rawItems, rawTx, rawSubs, settings] = await Promise.all([

@@ -27,7 +27,7 @@ import { cancelScheduledNotification, scheduleDueReminder } from '@/lib/notifica
 import { handleSmartInput } from '@/lib/smartInput/handleSmartInput';
 import { executeSmartActions } from '@/lib/smartInput/executeSmartActions';
 
-type Filter = 'all' | 'today' | 'overdue' | 'due_soon' | 'daily' | 'monthly' | 'yearly' | 'cancelled';
+type Filter = 'all' | 'today' | 'overdue' | 'due_soon' | 'daily' | 'monthly' | 'yearly' | 'cancelled' | 'completed';
 
 export default function ItemsScreen() {
   const colorScheme = useColorScheme();
@@ -83,6 +83,9 @@ export default function ItemsScreen() {
         break;
       case 'cancelled':
         list = items.filter((i) => i.status === 'cancelled');
+        break;
+      case 'completed':
+        list = items.filter((i) => i.status === 'completed');
         break;
       default:
         list = items;
@@ -214,13 +217,14 @@ export default function ItemsScreen() {
   const handleUpdateItem = async (id: string, patch: Partial<LifeItem>) => {
     const existing = items.find((i) => i.id === id);
     if (!existing) return;
-    if (patch.status === 'cancelled' && existing.notificationId) {
+    const becomingCompletedOrCancelled = patch.status === 'cancelled' || patch.status === 'completed';
+    if (becomingCompletedOrCancelled && existing.notificationId) {
       await cancelScheduledNotification(existing.notificationId);
     }
     let notificationId = existing.notificationId ?? undefined;
     const nextDue = patch.nextDueISO ?? existing.nextDueISO;
     const remindDays = patch.remindDaysBefore ?? existing.remindDaysBefore;
-    if (patch.status !== 'cancelled' && remindDays > 0) {
+    if (!becomingCompletedOrCancelled && remindDays > 0) {
       if (existing.notificationId) await cancelScheduledNotification(existing.notificationId);
       notificationId =
         (await scheduleDueReminder(id, patch.title ?? existing.title, nextDue, remindDays, patch.dueTime ?? existing.dueTime ?? undefined, patch.remindMinutesBefore ?? existing.remindMinutesBefore ?? 30)) ?? undefined;
@@ -228,6 +232,16 @@ export default function ItemsScreen() {
     await updateLifeItem(id, { ...patch, notificationId: notificationId ?? null });
     const updated = items.map((i) => (i.id === id ? { ...i, ...patch, notificationId } : i));
     await setItems(updated);
+  };
+
+  const handleMarkDone = async (item: LifeItem) => {
+    if (item.cadence === 'one_time') {
+      await handleUpdateItem(item.id, { status: 'completed' });
+      return;
+    }
+    const { addCadenceToDate } = await import('@/lib/date');
+    const nextDue = addCadenceToDate(item.nextDueISO, item.cadence);
+    await handleUpdateItem(item.id, { nextDueISO: nextDue });
   };
 
   const handleMarkRenewed = async () => {
@@ -269,6 +283,7 @@ export default function ItemsScreen() {
     { key: 'daily', label: 'Daily' },
     { key: 'monthly', label: 'Monthly' },
     { key: 'yearly', label: 'Yearly' },
+    { key: 'completed', label: 'Completed' },
     { key: 'cancelled', label: 'Cancelled' },
   ];
 
@@ -319,6 +334,7 @@ export default function ItemsScreen() {
           <View style={styles.emptyWrap}>
             <Text style={[styles.empty, { color: theme.textTertiary }]}>
               {filter === 'cancelled' ? 'No cancelled reminders.' :
+               filter === 'completed' ? 'No completed reminders.' :
                filter === 'overdue' ? 'No overdue reminders.' :
                filter === 'today' ? 'Nothing due today.' :
                'No reminders yet. Add one above.'}
@@ -333,6 +349,7 @@ export default function ItemsScreen() {
               addSheetRef.current?.snapToIndex(0);
             }}
             onDelete={() => handleDeleteItem(item)}
+            onMarkDone={item.status === 'active' ? handleMarkDone : undefined}
             dangerColor={theme.danger}
             iconColor="#fff"
           />

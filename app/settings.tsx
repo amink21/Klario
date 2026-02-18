@@ -39,7 +39,12 @@ import {
   setSettings,
 } from '@/lib/storage';
 import Constants from 'expo-constants';
-import { updateMorningBriefSchedule } from '@/lib/notifications';
+import {
+  updateMorningBriefSchedule,
+  previewMorningBriefNotification,
+  previewDueReminderNotification,
+  cancelNudgeNotifications,
+} from '@/lib/notifications';
 import { normalizeDueTime } from '@/lib/date';
 
 /** Parse "HH:mm" to Date (today at that time). */
@@ -136,6 +141,13 @@ export default function SettingsScreen() {
     const next = { ...settings!, dueItemReminders: value };
     await setSettingsStorage(next);
     await setSettingsStore(next);
+  };
+
+  const handleSmartNudges = async (value: boolean) => {
+    const next = { ...settings!, smartNudges: value };
+    await setSettingsStorage(next);
+    await setSettingsStore(next);
+    if (!value) await cancelNudgeNotifications();
   };
 
   const handleDefaultRemind = async (value: number) => {
@@ -419,6 +431,28 @@ export default function SettingsScreen() {
           </View>
           <View
             style={[
+              styles.settingRow,
+              styles.rowBorder,
+              { borderTopColor: theme.border },
+            ]}
+          >
+            <View style={styles.settingLabelWrap}>
+              <Text style={[styles.label, { color: theme.text }]}>
+                Smart nudges
+              </Text>
+              <Text style={[styles.subtitle, { color: theme.textTertiary }]}>
+                Spending insights, statement reminders, positive check-ins
+              </Text>
+            </View>
+            <Switch
+              value={s.smartNudges !== false}
+              onValueChange={handleSmartNudges}
+              trackColor={{ false: theme.pillBg, true: theme.tint }}
+              thumbColor="#fff"
+            />
+          </View>
+          <View
+            style={[
               styles.settingRowColumn,
               styles.rowBorder,
               { borderTopColor: theme.border },
@@ -500,6 +534,48 @@ export default function SettingsScreen() {
                 />
               </View>
             )}
+          </View>
+          <View
+            style={[
+              styles.settingRowColumn,
+              styles.rowBorder,
+              { borderTopColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.label, { color: theme.text, marginBottom: spacing.sm }]}>
+              Preview notifications
+            </Text>
+            <Text style={[styles.subtitle, { color: theme.textTertiary, marginBottom: spacing.md }]}>
+              Send a sample notification now to see how it looks
+            </Text>
+            <View style={styles.previewButtonRow}>
+              <TouchableOpacity
+                style={[styles.previewButton, { backgroundColor: theme.pillBg }]}
+                onPress={async () => {
+                  const ok = await previewMorningBriefNotification();
+                  if (!ok) Alert.alert('Permission needed', 'Enable notifications in your device settings to preview.');
+                }}
+                activeOpacity={0.7}
+              >
+                <FontAwesome name="sun-o" size={18} color={theme.tint} style={styles.previewButtonIcon} />
+                <Text style={[styles.previewButtonText, { color: theme.text }]}>
+                  Morning brief
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.previewButton, { backgroundColor: theme.pillBg }]}
+                onPress={async () => {
+                  const ok = await previewDueReminderNotification();
+                  if (!ok) Alert.alert('Permission needed', 'Enable notifications in your device settings to preview.');
+                }}
+                activeOpacity={0.7}
+              >
+                <FontAwesome name="bell-o" size={18} color={theme.tint} style={styles.previewButtonIcon} />
+                <Text style={[styles.previewButtonText, { color: theme.text }]}>
+                  Due reminder
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -643,6 +719,20 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
   },
   pillText: { fontSize: 14, fontWeight: '500' },
+  previewButtonRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  previewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+  },
+  previewButtonIcon: { marginRight: spacing.sm },
+  previewButtonText: { fontSize: 14, fontWeight: '600' },
   actionRow: { paddingVertical: spacing.sm },
   actionRowBorder: { borderTopWidth: 1, marginTop: spacing.xs },
   actionLabel: { fontSize: 16, fontWeight: '600' },

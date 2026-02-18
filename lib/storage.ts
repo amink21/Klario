@@ -225,6 +225,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
   morningBriefTime: '07:00',
   dueItemReminders: true,
   defaultRemindDaysBefore: 1,
+  smartNudges: true,
 };
 
 export async function getSettings(): Promise<SettingsState> {

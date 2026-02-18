@@ -1,5 +1,5 @@
 export type Cadence = 'one_time' | 'daily' | 'monthly' | 'yearly';
-export type LifeItemStatus = 'active' | 'cancelled';
+export type LifeItemStatus = 'active' | 'cancelled' | 'completed';
 
 export interface LifeItem {
   id: string;
@@ -49,6 +49,8 @@ export interface SettingsState {
   dueItemReminders: boolean;
   /** Days before due date to remind (1–365). Default 1. */
   defaultRemindDaysBefore: number;
+  /** Smart nudges: spending insights, statement reminders, positive reinforcement. Default true. */
+  smartNudges?: boolean;
   /** One-time demo seed flag (Supabase settings when wired). */
   hasSeeded?: boolean;
 }

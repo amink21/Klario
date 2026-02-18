@@ -3,7 +3,6 @@ import { normalizeDueTime } from '@/lib/date';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
     shouldShowBanner: true,
@@ -50,13 +49,13 @@ export async function scheduleDueReminder(
   if (remindDate.getTime() <= Date.now()) return null;
 
   const bodyLabel = normalizedTime
-    ? `${itemTitle} — due now`
-    : `${itemTitle} — reminder (${remindDaysBefore} days before)`;
+    ? `${itemTitle} is due now. Tap to open.`
+    : `${itemTitle} — reminder (${remindDaysBefore} day${remindDaysBefore === 1 ? '' : 's'} before due). Tap to open.`;
   const id = await Notifications.scheduleNotificationAsync({
     content: {
-      title: 'Due soon',
+      title: 'Reminder',
       body: bodyLabel,
-      data: { itemId },
+      data: { type: 'due_reminder', itemId },
     },
     trigger: { date: remindDate, channelId: 'due-reminders', type: Notifications.SchedulableTriggerInputTypes.DATE },
   });
@@ -104,7 +103,7 @@ export async function scheduleMorningBriefNotification(timeHHMM: string): Promis
   const id = await Notifications.scheduleNotificationAsync({
     content: {
       title: 'Morning brief',
-      body: 'Your daily summary is ready.',
+      body: 'Your daily summary is ready. Tap to view.',
       data: MORNING_BRIEF_DATA,
     },
     trigger: {
@@ -128,4 +127,78 @@ export async function updateMorningBriefSchedule(settings: {
   if (settings.morningBrief && settings.morningBriefTime) {
     await scheduleMorningBriefNotification(settings.morningBriefTime);
   }
+}
+
+/**
+ * Show the morning brief notification immediately (for preview in settings).
+ * Returns true if permission granted and notification was shown.
+ */
+export async function previewMorningBriefNotification(): Promise<boolean> {
+  const granted = await requestPermissions();
+  if (!granted) return false;
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: 'Morning brief',
+      body: 'Your daily summary is ready. Tap to view.',
+      data: MORNING_BRIEF_DATA,
+    },
+    trigger: null,
+  });
+  return true;
+}
+
+/**
+ * Show a sample due-reminder notification immediately (for preview in settings).
+ * Uses placeholder itemId so tapping opens Today without a specific item.
+ */
+export async function previewDueReminderNotification(): Promise<boolean> {
+  const granted = await requestPermissions();
+  if (!granted) return false;
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: 'Reminder',
+      body: 'Car insurance — reminder (1 day before due). Tap to open.',
+      data: { type: 'due_reminder', itemId: 'preview' },
+    },
+    trigger: null,
+  });
+  return true;
+}
+
+/** Cancel any scheduled smart-nudge notifications. */
+export async function cancelNudgeNotifications(): Promise<void> {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  for (const n of scheduled) {
+    if (n.content?.data && (n.content.data as Record<string, string>).type === 'nudge') {
+      await Notifications.cancelScheduledNotificationAsync(n.identifier);
+    }
+  }
+}
+
+/**
+ * Schedule a smart nudge notification at the given date.
+ * Data includes type: 'nudge' and nudgeId for analytics/deep link.
+ */
+export async function scheduleNudgeNotification(
+  title: string,
+  body: string,
+  nudgeId: string,
+  triggerDate: Date
+): Promise<string | null> {
+  const granted = await requestPermissions();
+  if (!granted) return null;
+  if (triggerDate.getTime() <= Date.now()) return null;
+  const id = await Notifications.scheduleNotificationAsync({
+    content: {
+      title,
+      body,
+      data: { type: 'nudge', nudgeId },
+    },
+    trigger: {
+      date: triggerDate,
+      channelId: 'due-reminders',
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+    },
+  });
+  return id;
 }
