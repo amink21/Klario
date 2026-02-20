@@ -23,6 +23,9 @@ GEMINI_API_KEY: str = (
 # Gemini model for statement parsing (must support PDF; see https://ai.google.dev/gemini-api/docs/models)
 GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
+# Gemini model for morning brief (text-only). Always 2.5 to match API key.
+GEMINI_BRIEF_MODEL: str = os.environ.get("GEMINI_BRIEF_MODEL", "gemini-2.5-flash")
+
 # Max upload size in MB (default 15)
 MAX_UPLOAD_MB: int = int(os.environ.get("MAX_UPLOAD_MB", "15"))
 

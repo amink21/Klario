@@ -10,6 +10,7 @@ import { AddItemSheet } from '@/components/AddItemSheet';
 import { AddTransactionSheet } from '@/components/AddTransactionSheet';
 import { SwipeableTransactionRow } from '@/components/SwipeableTransactionRow';
 import { TabScreenAnimation } from '@/components/TabScreenAnimation';
+import { PdfExtractingModal, type PdfExtractingStatus } from '@/components/PdfExtractingModal';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { formatCurrency } from '@/lib/currency';
 import { todayISO, startOfMonthFor, endOfMonthFor, formatMonthYear } from '@/lib/date';
@@ -52,6 +53,9 @@ export default function MoneyScreen() {
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
   const [viewAllSpendsVisible, setViewAllSpendsVisible] = React.useState(false);
   const [spendFilterCategory, setSpendFilterCategory] = React.useState<string>('All');
+  const [pdfExtractingVisible, setPdfExtractingVisible] = React.useState(false);
+  const [pdfExtractingStatus, setPdfExtractingStatus] = React.useState<PdfExtractingStatus>('working');
+  const [pdfExtractingError, setPdfExtractingError] = React.useState<string | null>(null);
   const now = new Date();
   const [selectedYear, setSelectedYear] = React.useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = React.useState(now.getMonth() + 1);
@@ -242,15 +246,18 @@ export default function MoneyScreen() {
           setTimeout(() => setImportMessage(null), 5000);
           return;
         }
-        setImportMessage('Sending PDF to parse…');
+        setPdfExtractingVisible(true);
+        setPdfExtractingStatus('working');
+        setPdfExtractingError(null);
         try {
           const result = await parsePdfWithGemini(uri, asset?.name ?? undefined);
           let txList = result.transactions;
           if (txList.length === 0) {
-            setImportMessage(result.warnings?.[0] ?? 'No transactions found in PDF.');
-            setTimeout(() => setImportMessage(null), 4000);
+            setPdfExtractingStatus('error');
+            setPdfExtractingError(result.warnings?.[0] ?? 'No transactions found in PDF.');
             return;
           }
+          setPdfExtractingStatus('found');
           const key = (t: { dateISO: string; title: string; amountCents: number }) =>
             `${t.dateISO}|${(t.title || '').trim()}|${t.amountCents}`;
           const seen = new Set<string>();
@@ -274,20 +281,20 @@ export default function MoneyScreen() {
             };
           });
           if (newTxs.length === 0) {
-            setImportMessage('All transactions from PDF were already imported.');
-            setTimeout(() => setImportMessage(null), 4000);
+            setPdfExtractingStatus('error');
+            setPdfExtractingError('All transactions from PDF were already imported.');
             return;
           }
           await addTransactions(newTxs);
           setLastImportISO(todayISO());
           setImportMessage(`Added ${newTxs.length} transaction${newTxs.length === 1 ? '' : 's'} from PDF.`);
+          setTimeout(() => setImportMessage(null), 3000);
         } catch (e) {
           const msg = e instanceof Error ? e.message : 'PDF import failed. Try again or use CSV/paste.';
-          setImportMessage(msg);
-          setTimeout(() => setImportMessage(null), 5000);
+          setPdfExtractingStatus('error');
+          setPdfExtractingError(msg);
           return;
         }
-        setTimeout(() => setImportMessage(null), 3000);
         return;
       }
 
@@ -692,6 +699,17 @@ export default function MoneyScreen() {
           onClose={() => setReviewParsed(null)}
         />
         <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
+
+        <PdfExtractingModal
+          visible={pdfExtractingVisible}
+          status={pdfExtractingStatus}
+          errorMessage={pdfExtractingError}
+          onClose={() => {
+            setPdfExtractingVisible(false);
+            setPdfExtractingStatus('working');
+            setPdfExtractingError(null);
+          }}
+        />
 
         <Modal visible={viewAllSpendsVisible} animationType="slide" onRequestClose={() => setViewAllSpendsVisible(false)}>
           <View style={[styles.viewAllModalContainer, { backgroundColor: theme.background }]}>

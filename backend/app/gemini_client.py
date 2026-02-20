@@ -6,7 +6,7 @@ from typing import Any
 from google import genai
 from google.genai import types
 
-from app.config import GEMINI_API_KEY, GEMINI_MODEL
+from app.config import GEMINI_API_KEY, GEMINI_MODEL, GEMINI_BRIEF_MODEL
 from app.parser.gemini_prompt import build_prompt
 from app.schemas import DailyBriefResponse, GeminiParseResponse
 
@@ -93,9 +93,6 @@ DAILY_BRIEF_SYSTEM = (
     "Output JSON: { \"lines\": [ \"line1\", \"line2\", ... ] }. Max 4 short bullet lines. "
     "Respond with valid JSON only. No markdown, no explanation."
 )
-BRIEF_MODEL = "gemini-2.0-flash"
-
-
 def generate_daily_brief(payload: dict[str, Any]) -> DailyBriefResponse:
     """
     Call Gemini for morning brief. Uses GEMINI_API_KEY from env (e.g. Render).
@@ -110,7 +107,7 @@ def generate_daily_brief(payload: dict[str, Any]) -> DailyBriefResponse:
     client = genai.Client(api_key=GEMINI_API_KEY)
     try:
         response = client.models.generate_content(
-            model=BRIEF_MODEL,
+            model=GEMINI_BRIEF_MODEL,
             contents=[types.Content(role="user", parts=[types.Part.from_text(text=full_prompt)])],
             config=types.GenerateContentConfig(
                 temperature=0.4,

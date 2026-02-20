@@ -93,7 +93,8 @@ curl -X POST "http://localhost:8000/imports/statement/parse-gemini" \
 |----------|-------------|---------|
 | `IMPORT_API_KEY` | Optional. If set, requests must send header `X-KLARIO-IMPORT-KEY` with the same value. If unset, no auth (fine for dev). | (none) |
 | `GEMINI_API_KEY` or `GOOGLE_API_KEY` | Google Gemini API key (Render env). Used for PDF parse and morning brief. Free tier has low rate limits (~15 req/min); 429 = wait or enable billing. | (none) |
-| `GEMINI_MODEL` | Gemini model for statement parsing. | `gemini-2.0-flash` |
+| `GEMINI_MODEL` | Gemini model for PDF statement parsing (must support PDF). | `gemini-2.5-flash` |
+| `GEMINI_BRIEF_MODEL` | Gemini model for morning brief (text-only). Use 2.5 to match API key. | `gemini-2.5-flash` |
 | `MAX_UPLOAD_MB` | Max PDF size in MB. | `15` |
 | `RATE_LIMIT_PER_MINUTE` | Per-IP rate limit. | `10` |
 | `CORS_ORIGINS` | Comma-separated origins, or `*` for all. | `*` |
