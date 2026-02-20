@@ -24,6 +24,6 @@ Then open `http://localhost:3000` (serve) or `http://localhost:8080` (Python).
 
 ## Customize
 
-- Replace `support@klario.app` and `privacy@klario.app` in the pages with your real contact emails.
+- Contact email used across the site: getklario@gmail.com.
 - Add real App Store / Google Play links in `index.html` when the app is published.
 - Colors and spacing match `../constants/Theme.ts` (light theme).

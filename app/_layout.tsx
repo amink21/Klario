@@ -102,39 +102,40 @@ function RootLayoutNav() {
   }, [settings?.morningBrief, settings?.morningBriefTime]);
 
   // Deep link: handle notification tap (foreground/background) and cold start.
+  // Run only after app has loaded so (tabs) is mounted and navigation works.
   useEffect(() => {
+    if (!loaded) return;
+
     function handleNotificationResponse(response: Notifications.NotificationResponse) {
       const data = response.notification.request.content.data as Record<string, string> | undefined;
       if (!data) return;
 
+      // Navigate to Today tab first (valid route); then open modal/sheet.
+      router.replace('/');
       if (data.type === 'morning_brief') {
         setShowMorningBriefModal(true);
-        router.replace('/(tabs)/today');
         return;
       }
 
       if (data.type === 'due_reminder' && data.itemId) {
         setDeepLinkItemId(data.itemId);
-        router.replace('/(tabs)/today');
         return;
       }
 
-      // Legacy: due reminders that only have itemId (no type).
       if (data.itemId) {
         setDeepLinkItemId(data.itemId);
-        router.replace('/(tabs)/today');
       }
     }
 
     const sub = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
 
-    // Cold start: app opened from notification.
+    // Cold start: app opened from notification tap.
     Notifications.getLastNotificationResponseAsync().then((response) => {
       if (response) handleNotificationResponse(response);
     });
 
     return () => sub.remove();
-  }, [router, setShowMorningBriefModal, setDeepLinkItemId]);
+  }, [loaded, router, setShowMorningBriefModal, setDeepLinkItemId]);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

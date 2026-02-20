@@ -14,8 +14,11 @@ except ImportError:
 # API key for import endpoint (optional; if set, X-KLARIO-IMPORT-KEY required)
 IMPORT_API_KEY: str = os.environ.get("IMPORT_API_KEY", "")
 
-# Gemini API key for statement parsing (required for parse-gemini endpoint)
-GEMINI_API_KEY: str = os.environ.get("GEMINI_API_KEY", "")
+# Gemini API key (Render env: GEMINI_API_KEY or GOOGLE_API_KEY)
+GEMINI_API_KEY: str = (
+    os.environ.get("GEMINI_API_KEY", "").strip()
+    or os.environ.get("GOOGLE_API_KEY", "").strip()
+)
 
 # Gemini model for statement parsing (must support PDF; see https://ai.google.dev/gemini-api/docs/models)
 GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")

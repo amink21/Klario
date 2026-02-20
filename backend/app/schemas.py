@@ -76,3 +76,23 @@ class GeminiParseResponse(BaseModel):
     transactions: list[GeminiTransactionOut] = []
     warnings: list[str] = []
     stats: GeminiStats = Field(default_factory=GeminiStats)
+
+
+# --- Daily brief (morning brief) ---
+
+class UpcomingItemBrief(BaseModel):
+    title: str
+    nextDueISO: str
+
+
+class DailyBriefRequest(BaseModel):
+    """Input for AI daily brief; matches app DailyBriefInput."""
+    upcomingItems: list[UpcomingItemBrief] = []
+    dueSoonCount: int = 0
+    forecastAmount: int = 0
+    yesterdaySpend: int = 0
+    topSpendCategory: str = "Other"
+
+
+class DailyBriefResponse(BaseModel):
+    lines: list[str] = Field(..., max_length=4, min_length=1)

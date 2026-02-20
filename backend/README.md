@@ -42,6 +42,10 @@ backend/
 
 Returns `{ "ok": true }`. No auth.
 
+### GET /routes
+
+Returns a list of registered routes. Use this to confirm your Render deploy has the latest code (you should see `"/ai/daily-brief"` in the list). If you get **404** on `POST /ai/daily-brief`, redeploy the backend (see below).
+
 ### POST /imports/statement/parse
 
 - **Content-Type:** `multipart/form-data`
@@ -54,6 +58,14 @@ Returns `{ "ok": true }`. No auth.
 - **File handling:** Max size 15MB (configurable). Temp file is created, parsed, then deleted. No storage.
 
 Transactions are returned for **client review**. The app will later insert confirmed transactions into Supabase; this API does not touch Supabase.
+
+### POST /ai/daily-brief
+
+- **Content-Type:** `application/json`
+- **Body:** `{ "upcomingItems": [...], "dueSoonCount", "forecastAmount", "yesterdaySpend", "topSpendCategory" }` (same as app `DailyBriefInput`)
+- **Headers:** `X-KLARIO-IMPORT-KEY` only if you set `IMPORT_API_KEY` in the backend
+- **Response:** `{ "lines": ["line1", "line2", ...] }` (1–4 short summary lines)
+- The Gemini API key is read from the **server** env (`GEMINI_API_KEY` or `GOOGLE_API_KEY` on Render). The app does not send or store the key.
 
 ### POST /imports/statement/parse-gemini
 
@@ -75,15 +87,25 @@ curl -X POST "http://localhost:8000/imports/statement/parse-gemini" \
 
 ## Env vars
 
+**Gemini:** All features that use the Gemini API (PDF parse, morning brief) are served by this backend. The app never reads or sends a Gemini key; set `GEMINI_API_KEY` or `GOOGLE_API_KEY` only in this service’s environment (e.g. Render env vars).
+
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `IMPORT_API_KEY` | Optional. If set, requests must send header `X-KLARIO-IMPORT-KEY` with the same value. If unset, no auth (fine for dev). | (none) |
-| `GEMINI_API_KEY` | Google Gemini API key for `/imports/statement/parse-gemini`. | (none) |
+| `GEMINI_API_KEY` or `GOOGLE_API_KEY` | Google Gemini API key (Render env). Used for PDF parse and morning brief. | (none) |
 | `GEMINI_MODEL` | Gemini model for statement parsing. | `gemini-2.0-flash` |
 | `MAX_UPLOAD_MB` | Max PDF size in MB. | `15` |
 | `RATE_LIMIT_PER_MINUTE` | Per-IP rate limit. | `10` |
 | `CORS_ORIGINS` | Comma-separated origins, or `*` for all. | `*` |
 | `TIMEZONE` | Default timezone for date parsing. | `America/Montreal` |
+
+## Getting 404 on POST /ai/daily-brief?
+
+The route is in this codebase; a **404** means Render is running an **old deploy** that doesn’t include it.
+
+1. **Redeploy on Render:** Dashboard → your service → **Manual Deploy** → **Deploy latest commit** (or push your latest code and let Render auto-deploy).
+2. **Check routes:** After deploy, open `https://your-service.onrender.com/routes` in a browser. You should see `"/ai/daily-brief"` in the list. If not, the deploy didn’t pick up the latest code (check branch and root directory in Render settings).
+3. Set **Root Directory** to `backend` (or wherever `app/main.py` lives) if your repo root is the whole app.
 
 ## How to start the backend (required for Gemini PDF import)
 
@@ -115,6 +137,17 @@ You should see something like `Uvicorn running on http://0.0.0.0:8000`. Keep thi
 
 - **Import key:** You can skip it. Don’t set `IMPORT_API_KEY` and don’t send `X-KLARIO-IMPORT-KEY`; the backend won’t require it.
 - **From your phone:** Use your PC’s IP and port 8000 in the app’s `EXPO_PUBLIC_IMPORT_API_URL` (e.g. `http://192.168.2.25:8000`), and ensure the backend is running on that machine.
+
+## Key expired or invalid?
+
+If you see **"API key expired. Please renew the API key"** or **400 INVALID_ARGUMENT**:
+
+1. **Create a new API key** at [Google AI Studio](https://aistudio.google.com/apikey) (the old one cannot be renewed).
+2. In **Render**: Dashboard → your service → **Environment** → set `GEMINI_API_KEY` to the new key (or edit the existing variable). Remove any extra spaces or line breaks.
+3. **Redeploy** the service (Manual Deploy → Deploy latest commit, or push a new commit) so the new env is loaded.
+4. Wait for the deploy to finish, then try PDF import again.
+
+The app never sees your key; only this backend uses it. If the key is correct in Render but you still get "expired", the key was revoked or expired by Google—create a new one.
 
 ## Verify Gemini API key
 

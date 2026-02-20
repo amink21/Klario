@@ -1,7 +1,14 @@
 /**
- * PDF statement import via FastAPI backend (Gemini). No Flask; no base64.
- * Set EXPO_PUBLIC_IMPORT_API_URL to your backend (e.g. http://localhost:8000).
+ * PDF statement import via Render backend. Gemini key is read from backend env only.
+ * @see lib/geminiBackend.ts for policy: all Gemini usage goes through the backend.
  */
+
+import {
+  GEMINI_BACKEND_URL,
+  GEMINI_BACKEND_IMPORT_KEY,
+  GEMINI_BACKEND_REQUIRED_MESSAGE,
+  isGeminiBackendAvailable,
+} from '@/lib/geminiBackend';
 
 export interface GeminiTransaction {
   dateISO: string;
@@ -20,20 +27,15 @@ export interface GeminiParseResponse {
   stats: { pages: number | null; model: string };
 }
 
-const IMPORT_API_URL = process.env.EXPO_PUBLIC_IMPORT_API_URL?.replace(/\/$/, '');
-const IMPORT_API_KEY = process.env.EXPO_PUBLIC_IMPORT_API_KEY ?? '';
-
-export function isGeminiImportAvailable(): boolean {
-  return !!IMPORT_API_URL;
-}
+export { isGeminiBackendAvailable as isGeminiImportAvailable };
 
 /**
  * Upload PDF file to backend parse-gemini endpoint; returns parsed transactions.
  * Uses multipart/form-data. No PDF storage on device or server (one-and-done).
  */
 export async function parsePdfWithGemini(uri: string, fileName?: string): Promise<GeminiParseResponse> {
-  if (!IMPORT_API_URL) {
-    throw new Error('PDF import requires EXPO_PUBLIC_IMPORT_API_URL (backend with Gemini) in .env.');
+  if (!GEMINI_BACKEND_URL) {
+    throw new Error(GEMINI_BACKEND_REQUIRED_MESSAGE);
   }
 
   const formData = new FormData();
@@ -45,9 +47,9 @@ export async function parsePdfWithGemini(uri: string, fileName?: string): Promis
   formData.append('timezone', 'America/Montreal');
 
   const headers: Record<string, string> = {};
-  if (IMPORT_API_KEY) headers['X-KLARIO-IMPORT-KEY'] = IMPORT_API_KEY;
+  if (GEMINI_BACKEND_IMPORT_KEY) headers['X-KLARIO-IMPORT-KEY'] = GEMINI_BACKEND_IMPORT_KEY;
 
-  const res = await fetch(`${IMPORT_API_URL}/imports/statement/parse-gemini`, {
+  const res = await fetch(`${GEMINI_BACKEND_URL}/imports/statement/parse-gemini`, {
     method: 'POST',
     headers,
     body: formData,

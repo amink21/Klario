@@ -63,9 +63,27 @@ function dateToTimeString(d: Date): string {
 
 const PRESET_REMIND_DAYS = [1, 7, 14, 30] as const;
 
-/** URLs for Support and Privacy Policy (set in .env: EXPO_PUBLIC_SUPPORT_URL, EXPO_PUBLIC_PRIVACY_POLICY_URL). */
-const SUPPORT_URL = (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_SUPPORT_URL) || 'https://example.com/support';
-const PRIVACY_POLICY_URL = (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_PRIVACY_POLICY_URL) || 'https://example.com/privacy';
+const SUPPORT_EMAIL = 'getklario@gmail.com';
+
+const SUPPORT_OPTIONS: { id: string; label: string; subject: string }[] = [
+  { id: 'bug', label: 'Bug report', subject: 'Klario App: Bug Report' },
+  { id: 'feature', label: 'Feature request', subject: 'Klario App: Feature Request' },
+  { id: 'request', label: 'General request', subject: 'Klario App: General Request' },
+  { id: 'billing', label: 'Billing / Account', subject: 'Klario App: Billing / Account' },
+  { id: 'other', label: 'Other', subject: 'Klario App: Support' },
+];
+
+/** Same policy as web (website/privacy.html). */
+const PRIVACY_POLICY_SECTIONS = [
+  { title: 'Overview', body: 'Klario ("we", "our", or "the app") is designed to keep your reminders, spending, and subscriptions in one place. We care about your privacy and aim to store only what\'s needed to run the app and, if you choose, to sync your data to the cloud.' },
+  { title: 'Data we collect and use', body: '• Account data. If you sign in (e.g. with email and password), we store your account credentials and a unique identifier so you can sync data across devices.\n\n• Synced content. When you sign in, items (reminders, bills), transactions, and app settings may be stored on our servers so you can access them from other devices. This data is tied to your account.\n\n• Subscriptions. Subscription lists are stored only on your device and are not synced to our servers.\n\n• Import and processing. If you use file or PDF import, the file content may be sent to our backend or a third-party service to extract text or transactions. We do not use this content for advertising or unrelated purposes.' },
+  { title: 'Data we do not sell', body: 'We do not sell your personal data or synced content to third parties for advertising or marketing.' },
+  { title: 'Security', body: 'We use industry-standard practices (including encryption in transit and, where applicable, at rest) to protect your account and synced data. You are responsible for keeping your sign-in credentials secure.' },
+  { title: 'Your choices', body: '• You can use the app without signing in; in that case, all data stays on your device.\n\n• You can sign out or delete your account; we will delete or anonymize your account and synced data in line with our retention policy.\n\n• You can clear all data or reset demo data from the app\'s Settings at any time.' },
+  { title: 'Children', body: 'Klario is not directed at children under 13. We do not knowingly collect personal information from children under 13. If you believe we have received such information, please contact us and we will delete it.' },
+  { title: 'Changes', body: 'We may update this Privacy Policy from time to time. We will post the revised policy on this page and update the "Last updated" date. Continued use of the app after changes constitutes acceptance of the updated policy.' },
+  { title: 'Contact', body: `Questions about this Privacy Policy or our practices can be sent to ${SUPPORT_EMAIL}.` },
+];
 
 export default function SettingsScreen() {
   const colorScheme = useColorScheme();
@@ -86,6 +104,8 @@ export default function SettingsScreen() {
   const [briefTimePickerValue, setBriefTimePickerValue] = useState(() =>
     timeStringToDate('07:00')
   );
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
 
   useEffect(() => {
     load();
@@ -141,8 +161,15 @@ export default function SettingsScreen() {
     );
   };
 
-  const openSupport = () => Linking.openURL(SUPPORT_URL);
-  const openPrivacyPolicy = () => Linking.openURL(PRIVACY_POLICY_URL);
+  const openSupportModal = () => setShowSupportModal(true);
+  const openPrivacyPolicy = () => setShowPrivacyModal(true);
+
+  const openSupportEmail = (subject: string) => {
+    setShowSupportModal(false);
+    const body = 'Please describe your issue or request below:\n\n';
+    const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    Linking.openURL(url);
+  };
 
   const handleMorningBrief = async (value: boolean) => {
     const next = { ...settings!, morningBrief: value };
@@ -287,7 +314,7 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
             <View style={[styles.settingRow, styles.rowBorder, { borderTopColor: theme.border }]}>
-              <TouchableOpacity style={styles.linkRow} onPress={openSupport} activeOpacity={0.7}>
+              <TouchableOpacity style={styles.linkRow} onPress={openSupportModal} activeOpacity={0.7}>
                 <Text style={[styles.label, { color: theme.text }]}>Support</Text>
                 <FontAwesome name="external-link" size={12} color={theme.textTertiary} />
               </TouchableOpacity>
@@ -295,7 +322,7 @@ export default function SettingsScreen() {
             <View style={[styles.settingRow, styles.rowBorder, { borderTopColor: theme.border }]}>
               <TouchableOpacity style={styles.linkRow} onPress={openPrivacyPolicy} activeOpacity={0.7}>
                 <Text style={[styles.label, { color: theme.text }]}>Privacy policy</Text>
-                <FontAwesome name="external-link" size={12} color={theme.textTertiary} />
+                <FontAwesome name="chevron-right" size={12} color={theme.textTertiary} />
               </TouchableOpacity>
             </View>
             <View style={[styles.settingRow, styles.rowBorder, { borderTopColor: theme.border }]}>
@@ -347,7 +374,7 @@ export default function SettingsScreen() {
                 Sign in to sync your data to the cloud.
               </Text>
             <View style={[styles.settingRow, styles.rowBorder, { borderTopColor: theme.border, marginTop: spacing.md }]}>
-              <TouchableOpacity style={styles.linkRow} onPress={openSupport} activeOpacity={0.7}>
+              <TouchableOpacity style={styles.linkRow} onPress={openSupportModal} activeOpacity={0.7}>
                 <Text style={[styles.label, { color: theme.text }]}>Support</Text>
                 <FontAwesome name="external-link" size={12} color={theme.textTertiary} />
               </TouchableOpacity>
@@ -355,7 +382,7 @@ export default function SettingsScreen() {
             <View style={[styles.settingRow, styles.rowBorder, { borderTopColor: theme.border }]}>
               <TouchableOpacity style={styles.linkRow} onPress={openPrivacyPolicy} activeOpacity={0.7}>
                 <Text style={[styles.label, { color: theme.text }]}>Privacy policy</Text>
-                <FontAwesome name="external-link" size={12} color={theme.textTertiary} />
+                <FontAwesome name="chevron-right" size={12} color={theme.textTertiary} />
               </TouchableOpacity>
             </View>
             </>
@@ -714,6 +741,53 @@ export default function SettingsScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Privacy policy modal – same policy as web, in-app */}
+      <Modal visible={showPrivacyModal} animationType="slide" onRequestClose={() => setShowPrivacyModal(false)}>
+        <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Privacy Policy</Text>
+            <TouchableOpacity onPress={() => setShowPrivacyModal(false)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Text style={[styles.modalClose, { color: theme.tint }]}>Close</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+            <Text style={[styles.privacyUpdated, { color: theme.textTertiary }]}>Last updated: February 2026</Text>
+            {PRIVACY_POLICY_SECTIONS.map((section, i) => (
+              <View key={i} style={styles.privacySection}>
+                <Text style={[styles.privacyHeading, { color: theme.text }]}>{section.title}</Text>
+                <Text style={[styles.privacyBody, { color: theme.textSecondary }]}>{section.body}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Support modal – choose type then open email to getklario@gmail.com */}
+      <Modal visible={showSupportModal} transparent animationType="fade" onRequestClose={() => setShowSupportModal(false)}>
+        <Pressable style={styles.supportModalOverlay} onPress={() => setShowSupportModal(false)}>
+          <Pressable style={[styles.supportModalCard, { backgroundColor: theme.surfaceElevated }]} onPress={() => {}}>
+            <View style={[styles.supportModalHeader, { borderBottomColor: theme.border }]}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Support</Text>
+              <TouchableOpacity onPress={() => setShowSupportModal(false)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                <Text style={[styles.modalClose, { color: theme.tint }]}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.supportModalHint, { color: theme.textTertiary }]}>Choose a category to open your email with a prefilled subject.</Text>
+            {SUPPORT_OPTIONS.map((opt) => (
+              <TouchableOpacity
+                key={opt.id}
+                style={[styles.supportOptionRow, { borderTopColor: theme.border }]}
+                onPress={() => openSupportEmail(opt.subject)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.label, { color: theme.text }]}>{opt.label}</Text>
+                <FontAwesome name="chevron-right" size={12} color={theme.textTertiary} />
+              </TouchableOpacity>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -877,4 +951,55 @@ const styles = StyleSheet.create({
   authBtn: { paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, borderRadius: radius.lg, alignItems: 'center' },
   authBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   authBtnRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  modalContainer: { flex: 1, paddingTop: spacing.xxl },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '600' },
+  modalClose: { fontSize: 16, fontWeight: '500' },
+  modalScroll: { flex: 1 },
+  modalScrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  privacyUpdated: { fontSize: 13, marginBottom: spacing.lg },
+  privacySection: { marginBottom: spacing.xl },
+  privacyHeading: { fontSize: 17, fontWeight: '600', marginBottom: spacing.sm },
+  privacyBody: { fontSize: 15, lineHeight: 22 },
+  supportModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  supportModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: radius.xl,
+    overflow: 'hidden',
+  },
+  supportModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+  },
+  supportModalHint: {
+    fontSize: 13,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  supportOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderTopWidth: 1,
+  },
 });

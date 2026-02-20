@@ -21,9 +21,9 @@ from app.config import (
     MAX_UPLOAD_MB,
     RATE_LIMIT_PER_MINUTE,
 )
-from app.gemini_client import parse_pdf_with_gemini
+from app.gemini_client import generate_daily_brief, parse_pdf_with_gemini
 from app.parser.statement_parser import parse_statement
-from app.schemas import GeminiParseResponse, ParseStatementResponse
+from app.schemas import DailyBriefRequest, DailyBriefResponse, GeminiParseResponse, ParseStatementResponse
 from app.utils.files import cleanup_temp_file, save_temp_pdf, validate_pdf_upload
 from app.utils.logging import setup_logging
 
@@ -75,6 +75,20 @@ app.add_middleware(
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+@app.get("/routes")
+def list_routes():
+    """List registered routes (for checking deploy has /ai/daily-brief)."""
+    return {
+        "routes": [
+            {"path": "/health", "methods": ["GET"]},
+            {"path": "/routes", "methods": ["GET"]},
+            {"path": "/imports/statement/parse", "methods": ["POST"]},
+            {"path": "/imports/statement/parse-gemini", "methods": ["POST"]},
+            {"path": "/ai/daily-brief", "methods": ["POST"]},
+        ]
+    }
 
 
 @app.post("/imports/statement/parse", response_model=ParseStatementResponse)
@@ -154,7 +168,9 @@ async def parse_statement_gemini(
     except ValueError as e:
         msg = str(e)
         logger.warning("[%s] Gemini parse error: %s", request_id, msg[:200])
-        raise HTTPException(status_code=502, detail=msg) from e
+        # Key expired/invalid → 400 so client can show actionable message
+        status = 400 if ("expired" in msg.lower() or "invalid" in msg.lower() and "key" in msg.lower()) else 502
+        raise HTTPException(status_code=status, detail=msg) from e
 
     # Log without leaking statement content
     logger.info(
@@ -165,3 +181,28 @@ async def parse_statement_gemini(
         len(result.warnings),
     )
     return result
+
+
+@app.post("/ai/daily-brief", response_model=DailyBriefResponse)
+async def daily_brief(
+    request: Request,
+    body: DailyBriefRequest,
+    x_klario_import_key: str | None = Header(None, alias="X-KLARIO-IMPORT-KEY"),
+):
+    """
+    Generate morning brief using Gemini. API key is read from server env (GEMINI_API_KEY or GOOGLE_API_KEY on Render).
+    """
+    _check_rate_limit(request.client.host if request.client else "unknown")
+    _check_api_key(x_klario_import_key)
+
+    try:
+        payload = body.model_dump()
+        result = await asyncio.to_thread(generate_daily_brief, payload)
+        return result
+    except ValueError as e:
+        msg = str(e)
+        if "not set" in msg or "invalid" in msg.lower() or "expired" in msg.lower():
+            raise HTTPException(status_code=503, detail=msg) from e
+        if "rate limit" in msg.lower():
+            raise HTTPException(status_code=429, detail=msg) from e
+        raise HTTPException(status_code=502, detail=msg) from e
