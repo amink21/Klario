@@ -4,11 +4,14 @@ No PDF storage; temp file deleted immediately after parse.
 Gemini endpoint: read upload into memory, send to Gemini, return parsed transactions.
 """
 import asyncio
+import hashlib
+import json
 import logging
 import time
 import uuid
 from collections import defaultdict
 from contextlib import asynccontextmanager
+from datetime import date
 
 from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,6 +38,10 @@ ALLOWED_CONTENT_TYPES = {"application/pdf", "application/octet-stream"}
 
 # In-memory rate limit: ip -> list of request timestamps
 _rate: defaultdict[str, list[float]] = defaultdict(list)
+
+# Daily brief cache: (date_iso, payload_hash) -> DailyBriefResponse; avoids hitting Gemini on every open.
+_brief_cache: dict[tuple[str, str], DailyBriefResponse] = {}
+_BRIEF_CACHE_MAX_ENTRIES = 100
 
 
 def _check_rate_limit(ip: str) -> None:
@@ -183,6 +190,14 @@ async def parse_statement_gemini(
     return result
 
 
+def _brief_cache_key(payload: dict) -> tuple[str, str]:
+    """Cache key: (today's date, stable hash of payload). Same day + same data = same brief."""
+    date_iso = date.today().isoformat()
+    payload_str = json.dumps(payload, sort_keys=True)
+    h = hashlib.sha256(payload_str.encode()).hexdigest()[:32]
+    return (date_iso, h)
+
+
 @app.post("/ai/daily-brief", response_model=DailyBriefResponse)
 async def daily_brief(
     request: Request,
@@ -191,18 +206,33 @@ async def daily_brief(
 ):
     """
     Generate morning brief using Gemini. API key is read from server env (GEMINI_API_KEY or GOOGLE_API_KEY on Render).
+    Responses are cached per calendar day per payload to avoid hitting Gemini rate limits on repeated opens.
     """
     _check_rate_limit(request.client.host if request.client else "unknown")
     _check_api_key(x_klario_import_key)
 
+    payload = body.model_dump()
+    cache_key = _brief_cache_key(payload)
+    if cache_key in _brief_cache:
+        return _brief_cache[cache_key]
+
     try:
-        payload = body.model_dump()
         result = await asyncio.to_thread(generate_daily_brief, payload)
+        if len(_brief_cache) >= _BRIEF_CACHE_MAX_ENTRIES:
+            # Evict oldest (arbitrary: clear keys not from today)
+            today = date.today().isoformat()
+            to_remove = [k for k in _brief_cache if k[0] != today]
+            for k in to_remove:
+                del _brief_cache[k]
+        _brief_cache[cache_key] = result
         return result
     except ValueError as e:
         msg = str(e)
         if "not set" in msg or "invalid" in msg.lower() or "expired" in msg.lower():
             raise HTTPException(status_code=503, detail=msg) from e
-        if "rate limit" in msg.lower():
-            raise HTTPException(status_code=429, detail=msg) from e
+        if "rate limit" in msg.lower() or "429" in msg:
+            raise HTTPException(
+                status_code=429,
+                detail="Gemini rate limit reached. Wait a minute and try again, or enable billing at https://ai.google.dev.",
+            ) from e
         raise HTTPException(status_code=502, detail=msg) from e

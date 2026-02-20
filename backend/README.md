@@ -92,7 +92,7 @@ curl -X POST "http://localhost:8000/imports/statement/parse-gemini" \
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `IMPORT_API_KEY` | Optional. If set, requests must send header `X-KLARIO-IMPORT-KEY` with the same value. If unset, no auth (fine for dev). | (none) |
-| `GEMINI_API_KEY` or `GOOGLE_API_KEY` | Google Gemini API key (Render env). Used for PDF parse and morning brief. | (none) |
+| `GEMINI_API_KEY` or `GOOGLE_API_KEY` | Google Gemini API key (Render env). Used for PDF parse and morning brief. Free tier has low rate limits (~15 req/min); 429 = wait or enable billing. | (none) |
 | `GEMINI_MODEL` | Gemini model for statement parsing. | `gemini-2.0-flash` |
 | `MAX_UPLOAD_MB` | Max PDF size in MB. | `15` |
 | `RATE_LIMIT_PER_MINUTE` | Per-IP rate limit. | `10` |
@@ -175,6 +175,14 @@ curl -X POST "http://localhost:8000/imports/statement/parse-gemini" \
 - Response is JSON: `transactions[]` with `dateISO`, `title`, `amountCents`, `direction`, **`category`** (auto-categorized), `merchant`, `confidence`, plus `warnings` and `stats`.
 
 So: (1) confirms the key; (2) confirms we’re using it and returning categorized transactions.
+
+## 429 Too Many Requests (Gemini rate limit)
+
+If you see **429** from `POST /ai/daily-brief` or from PDF parse, Google’s Gemini API is rate-limiting you (free tier is ~15 requests/minute). The backend caches daily-brief responses per day per payload, so repeated opens of the morning brief usually hit the cache. If you still hit 429:
+
+- Wait a minute and try again.
+- Enable billing at [Google AI](https://ai.google.dev) for higher quotas.
+- Avoid opening the brief or importing PDFs many times in a short period.
 
 ## cURL example
 

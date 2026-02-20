@@ -30,15 +30,18 @@ export function MorningBriefModal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch brief only when modal opens; use store state at open time to avoid multiple Gemini calls.
   useEffect(() => {
     if (!visible) return;
 
     setLoading(true);
     setError(null);
 
+    const { items: currentItems, transactions: currentTx, subscriptions: currentSubs } = useStore.getState();
+
     function buildBriefInput(): DailyBriefInput {
       const yesterday = yesterdayISO();
-      const yesterdayTx = transactions.filter((t) => t.dateISO === yesterday);
+      const yesterdayTx = currentTx.filter((t) => t.dateISO === yesterday);
       const yesterdaySpend = yesterdayTx.reduce((sum, t) => sum + (t.amountCents > 0 ? t.amountCents : 0), 0);
 
       const byCategory: Record<string, number> = {};
@@ -52,18 +55,18 @@ export function MorningBriefModal() {
           ? Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0]![0]
           : 'Other';
 
-      const activeItems = items.filter((i) => i.status === 'active');
+      const activeItems = currentItems.filter((i) => i.status === 'active');
       const dueIn7Items = activeItems.filter((i) => {
         const d = daysUntil(i.nextDueISO);
         return d >= 0 && d <= 7;
       });
-      const dueIn7Subs = subscriptions.filter((s) => {
+      const dueIn7Subs = currentSubs.filter((s) => {
         const d = daysUntil(s.nextDueISO);
         return d >= 0 && d <= 7;
       });
       const dueSoonCount = dueIn7Items.length + dueIn7Subs.length;
 
-      const forecastAmount = computeUpcomingTotal(activeItems, subscriptions, 30);
+      const forecastAmount = computeUpcomingTotal(activeItems, currentSubs, 30);
 
       const upcomingItems = [...activeItems]
         .sort((a, b) => a.nextDueISO.localeCompare(b.nextDueISO))
@@ -89,7 +92,8 @@ export function MorningBriefModal() {
         setError((e as Error).message ?? 'Could not load brief');
         setLoading(false);
       });
-  }, [visible, items, transactions, subscriptions]);
+    // Only run when modal becomes visible; avoid re-running when items/transactions change (prevents 429).
+  }, [visible]);
 
   const handleClose = () => setShowMorningBriefModal(false);
 
