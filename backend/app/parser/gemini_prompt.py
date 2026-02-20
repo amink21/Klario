@@ -31,7 +31,7 @@ Return ONLY valid JSON in this exact shape. Do not wrap in markdown. No commenta
     }}
   ],
   "warnings": ["optional list of strings"],
-  "stats": {{ "pages": number or null, "model": "gemini-2.5-flash" }}
+  "stats": {{ "pages": number or null, "model": "gemini-2.0-flash" }}
 }}
 
 Rules:
@@ -51,7 +51,7 @@ Example output (shape only):
     {{ "dateISO": "2026-01-15", "title": "PAYMENT - THANK YOU", "amountCents": 12715, "direction": "credit", "category": "Other", "merchant": null, "source": "statement_import", "confidence": 1.0 }}
   ],
   "warnings": [],
-  "stats": {{ "pages": 1, "model": "gemini-2.5-flash" }}
+  "stats": {{ "pages": 1, "model": "gemini-2.0-flash" }}
 }}
 
 Return ONLY the JSON object, no other text."""

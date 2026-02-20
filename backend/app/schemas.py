@@ -69,7 +69,7 @@ class GeminiTransactionOut(BaseModel):
 class GeminiStats(BaseModel):
     """Metadata returned with PDF parse response (pages count, model name)."""
     pages: int | None = None
-    model: str = "gemini-2.5-flash"
+    model: str = "gemini-2.0-flash"
 
 
 class GeminiParseResponse(BaseModel):

@@ -229,6 +229,7 @@ async def daily_brief(
     except ValueError as e:
         msg = str(e)
         if "not set" in msg or "invalid" in msg.lower() or "expired" in msg.lower():
+            logger.warning("Daily brief Gemini error (503): %s", msg[:200])
             raise HTTPException(status_code=503, detail=msg) from e
         if "rate limit" in msg.lower() or "429" in msg:
             raise HTTPException(
