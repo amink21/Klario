@@ -79,6 +79,16 @@ export function formatDueIn(iso: string, dueTime?: string | null): string {
 }
 
 /**
+ * Format a Date as YYYY-MM-DD in local time (for date picker → form value).
+ */
+export function dateToISOString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
  * Start of today in local time as ISO string (date only).
  * Uses local date so timezone doesn't flip to next/previous day.
  */

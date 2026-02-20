@@ -244,6 +244,10 @@ export default function ItemsScreen() {
     await handleUpdateItem(item.id, { nextDueISO: nextDue });
   };
 
+  const handleMarkUndone = async (item: LifeItem) => {
+    await handleUpdateItem(item.id, { status: 'active' });
+  };
+
   const handleMarkRenewed = async () => {
     if (!selectedItem || selectedItem.cadence === 'one_time') return;
     const { addCadenceToDate } = await import('@/lib/date');
@@ -349,7 +353,8 @@ export default function ItemsScreen() {
               addSheetRef.current?.snapToIndex(0);
             }}
             onDelete={() => handleDeleteItem(item)}
-            onMarkDone={item.status === 'active' ? handleMarkDone : undefined}
+            onMarkDone={handleMarkDone}
+            onMarkUndone={handleMarkUndone}
             dangerColor={theme.danger}
             iconColor="#fff"
           />

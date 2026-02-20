@@ -142,6 +142,10 @@ export default function TodayScreen() {
     await handleUpdateItem(item.id, { nextDueISO: nextDue });
   };
 
+  const handleMarkUndone = async (item: LifeItem) => {
+    await handleUpdateItem(item.id, { status: 'active' });
+  };
+
   const runExecute = async (
     parsed: import('@/lib/ai/schemas').SmartInputParseResult,
     createReminder: boolean,
@@ -333,6 +337,7 @@ export default function TodayScreen() {
             addItemRef.current?.snapToIndex(0);
           }}
           onMarkDone={handleMarkDone}
+          onMarkUndone={handleMarkUndone}
         />
 
         {/* Upcoming Money — tappable card; tap reveals breakdown */}

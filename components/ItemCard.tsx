@@ -12,25 +12,35 @@ interface ItemCardProps {
   onPress: () => void;
   /** When provided and item is active, shows a check to mark as done. */
   onMarkDone?: (item: LifeItem) => void;
+  /** When provided and item is completed, tapping the green check marks it undone (back to active). */
+  onMarkUndone?: (item: LifeItem) => void;
 }
 
-export function ItemCard({ item, onPress, onMarkDone }: ItemCardProps) {
+export function ItemCard({ item, onPress, onMarkDone, onMarkUndone }: ItemCardProps) {
   const colorScheme = useColorScheme();
   const theme = colors[colorScheme ?? 'light'];
   const isCancelled = item.status === 'cancelled';
   const isCompleted = item.status === 'completed';
-  const showCheck = onMarkDone && item.status === 'active';
+  const onCheckPress = isCompleted ? onMarkUndone : onMarkDone;
+  const showCheck = (onMarkDone != null || onMarkUndone != null) && onCheckPress != null && (item.status === 'active' || item.status === 'completed');
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.surface }, (isCancelled || isCompleted) && { opacity: 0.7 }]}>
+    <View style={[styles.card, { backgroundColor: theme.surface }, isCancelled && { opacity: 0.7 }]}>
       {showCheck && (
         <TouchableOpacity
-          style={[styles.checkWrap, { backgroundColor: theme.accentPill }]}
-          onPress={() => onMarkDone(item)}
+          style={[
+            styles.checkWrap,
+            { backgroundColor: isCompleted ? theme.tint : theme.pillBg },
+          ]}
+          onPress={() => onCheckPress(item)}
           activeOpacity={0.7}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <FontAwesome name="check" size={14} color={theme.tint} />
+          <FontAwesome
+            name="check"
+            size={14}
+            color={isCompleted ? '#fff' : theme.textTertiary}
+          />
         </TouchableOpacity>
       )}
       <TouchableOpacity

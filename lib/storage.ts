@@ -272,6 +272,7 @@ export async function resetAllData(): Promise<void> {
   if (supabase && uid) {
     await supabase.from('life_items').delete().eq('user_id', uid);
     await supabase.from('transactions').delete().eq('user_id', uid);
+    await supabase.from('subscriptions').delete().eq('user_id', uid);
     await supabase.from('settings').delete().eq('user_id', uid);
   }
   cache = {

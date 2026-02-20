@@ -1,8 +1,8 @@
 # Klario AI Layer – Usage
 
-- **Provider:** [OpenRouter](https://openrouter.ai/docs/quickstart) (unified API; same request format as OpenAI).
-- **API key:** Set `EXPO_PUBLIC_OPENROUTER_API_KEY` in `.env` (get a key at [openrouter.ai/keys](https://openrouter.ai/keys)). Never hardcode.
-- **Backend proxy:** Set `EXPO_PUBLIC_OPENROUTER_BASE_URL` to your proxy URL to override the OpenRouter endpoint.
+- **Morning brief:** [Google Gemini](https://ai.google.dev/gemini-api/docs). Set `EXPO_PUBLIC_GOOGLE_API_KEY` or `GEMINI_API_KEY` in `.env` (get a key at [Google AI Studio](https://aistudio.google.com/apikey)). Never hardcode.
+- **Other AI (Smart Add, categories, subscriptions, etc.):** [OpenRouter](https://openrouter.ai/docs/quickstart). Set `EXPO_PUBLIC_OPENROUTER_API_KEY` in `.env` (get a key at [openrouter.ai/keys](https://openrouter.ai/keys)).
+- **Backend proxy (OpenRouter only):** Set `EXPO_PUBLIC_OPENROUTER_BASE_URL` to your proxy URL to override the OpenRouter endpoint.
 - All AI responses are validated with Zod before use.
 
 ---

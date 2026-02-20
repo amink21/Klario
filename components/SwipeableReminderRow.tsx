@@ -12,8 +12,9 @@ interface SwipeableReminderRowProps {
   item: LifeItem;
   onPress: () => void;
   onDelete: () => void;
-  /** When provided (e.g. for active items), shows a check to mark as done. */
+  /** When provided, shows check to mark as done (active) or undone (completed). */
   onMarkDone?: (item: LifeItem) => void;
+  onMarkUndone?: (item: LifeItem) => void;
   dangerColor: string;
   iconColor: string;
 }
@@ -23,6 +24,7 @@ export function SwipeableReminderRow({
   onPress,
   onDelete,
   onMarkDone,
+  onMarkUndone,
   dangerColor,
   iconColor,
 }: SwipeableReminderRowProps) {
@@ -63,7 +65,7 @@ export function SwipeableReminderRow({
       rightThreshold={40}
       renderRightActions={renderRightActions}
     >
-      <ItemCard item={item} onPress={onPress} onMarkDone={onMarkDone} />
+      <ItemCard item={item} onPress={onPress} onMarkDone={onMarkDone} onMarkUndone={onMarkUndone} />
     </Swipeable>
   );
 }

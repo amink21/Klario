@@ -15,14 +15,17 @@ interface UpcomingListProps {
   onItemPress?: (item: LifeItem) => void;
   /** When provided, shows a check circle to mark the reminder as done. */
   onMarkDone?: (item: LifeItem) => void;
+  /** When provided, completed items show green check + Done and tapping calls this to mark undone. */
+  onMarkUndone?: (item: LifeItem) => void;
 }
 
-export function UpcomingList({ items, limit = 5, withinDays = 14, onItemPress, onMarkDone }: UpcomingListProps) {
+export function UpcomingList({ items, limit = 5, withinDays = 14, onItemPress, onMarkDone, onMarkUndone }: UpcomingListProps) {
   const colorScheme = useColorScheme();
   const theme = colors[colorScheme ?? 'light'];
+  const showCheckToggle = (onMarkDone != null) || (onMarkUndone != null);
   const sorted = [...items]
     .filter((i) => {
-      if (i.status !== 'active') return false;
+      if (i.status !== 'active' && i.status !== 'completed') return false;
       const d = daysUntil(i.nextDueISO);
       if (withinDays === 0) return d === 0;
       return d >= 0 && d <= withinDays;
@@ -30,7 +33,6 @@ export function UpcomingList({ items, limit = 5, withinDays = 14, onItemPress, o
     .sort((a, b) => getDueTimestamp(a.nextDueISO, a.dueTime) - getDueTimestamp(b.nextDueISO, b.dueTime))
     .slice(0, limit);
 
-  // Dedupe by id so we never render duplicate keys (e.g. from store glitches)
   const seen = new Set<string>();
   const deduped = sorted.filter((i) => {
     if (seen.has(i.id)) return false;
@@ -45,43 +47,61 @@ export function UpcomingList({ items, limit = 5, withinDays = 14, onItemPress, o
           {withinDays === 0 ? 'Nothing due today' : 'Nothing due soon'}
         </Text>
       ) : (
-        deduped.map((item, index) => (
-          <View
-            key={`${item.id}-${index}`}
-            style={[styles.row, index > 0 && [styles.rowNotFirst, { borderTopColor: theme.border }]]}
-          >
-            {onMarkDone && (
-              <TouchableOpacity
-                style={[styles.checkWrap, { backgroundColor: theme.accentPill }]}
-                onPress={() => onMarkDone(item)}
-                activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <FontAwesome name="check" size={14} color={theme.tint} />
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={styles.rowMain}
-              onPress={() => onItemPress?.(item)}
-              activeOpacity={0.6}
+        deduped.map((item, index) => {
+          const isCompleted = item.status === 'completed';
+          const onCheckPress = isCompleted ? onMarkUndone : onMarkDone;
+          return (
+            <View
+              key={`${item.id}-${index}`}
+              style={[styles.row, index > 0 && [styles.rowNotFirst, { borderTopColor: theme.border }]]}
             >
-              <View style={styles.rowLeft}>
-                <Text style={[styles.itemTitle, { color: theme.text }]} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <Text style={[styles.dueIn, { color: theme.textTertiary }]}>
-                  {formatDueIn(item.nextDueISO, item.dueTime)}
-                  {item.dueTime ? ` at ${formatTimeHHMM(item.dueTime)}` : ''}
-                </Text>
-              </View>
-              {item.amountCents != null && (
-                <Text style={[styles.amount, { color: theme.textSecondary }]}>
-                  {formatCurrency(item.amountCents)}
-                </Text>
+              {showCheckToggle && onCheckPress && (
+                <TouchableOpacity
+                  style={[
+                    styles.checkWrap,
+                    { backgroundColor: isCompleted ? theme.tint : theme.pillBg },
+                  ]}
+                  onPress={() => onCheckPress(item)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <FontAwesome
+                    name="check"
+                    size={14}
+                    color={isCompleted ? '#fff' : theme.textTertiary}
+                  />
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
-          </View>
-        ))
+              <TouchableOpacity
+                style={styles.rowMain}
+                onPress={() => onItemPress?.(item)}
+                activeOpacity={0.6}
+              >
+                <View style={styles.rowLeft}>
+                  <Text style={[styles.itemTitle, { color: theme.text }]} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  <Text style={[styles.dueIn, { color: theme.textTertiary }]}>
+                    {formatDueIn(item.nextDueISO, item.dueTime)}
+                    {item.dueTime ? ` at ${formatTimeHHMM(item.dueTime)}` : ''}
+                  </Text>
+                </View>
+                <View style={styles.rowRight}>
+                  {isCompleted && (
+                    <View style={[styles.doneBadge, { backgroundColor: theme.chipStable }]}>
+                      <Text style={[styles.doneBadgeText, { color: theme.tint }]}>Done</Text>
+                    </View>
+                  )}
+                  {item.amountCents != null && (
+                    <Text style={[styles.amount, { color: theme.textSecondary }]}>
+                      {formatCurrency(item.amountCents)}
+                    </Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            </View>
+          );
+        })
       )}
     </View>
   );
@@ -120,7 +140,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rowLeft: { flex: 1 },
+  rowRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   itemTitle: { fontSize: 16, fontWeight: '500', letterSpacing: -0.3 },
   dueIn: { fontSize: 13, marginTop: 2 },
   amount: { fontSize: 15, fontWeight: '500' },
+  doneBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+  },
+  doneBadgeText: { fontSize: 12, fontWeight: '500' },
 });

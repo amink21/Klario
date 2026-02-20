@@ -7,12 +7,16 @@ import {
   TextInput,
   ScrollView,
   Switch,
+  Modal,
+  Pressable,
+  Platform,
 } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useColorScheme } from '@/components/useColorScheme';
 import { colors, spacing, radius } from '@/constants/Theme';
 import { SMART_INPUT_CATEGORIES } from '@/lib/ai/schemas';
-import { todayISO } from '@/lib/date';
+import { formatDisplayDate, todayISO, dateToISOString } from '@/lib/date';
 import type { SmartInputParseResult } from '@/lib/ai/schemas';
 
 type ReminderEdit = NonNullable<SmartInputParseResult['reminder']>;
@@ -45,6 +49,8 @@ export function SmartInputReviewSheet({
   const [createSpending, setCreateSpending] = useState(true);
   const [reminder, setReminder] = useState<ReminderEdit | null>(null);
   const [spending, setSpending] = useState<SpendingEdit | null>(null);
+  const [datePickerTarget, setDatePickerTarget] = useState<'reminder' | 'spending' | null>(null);
+  const [datePickerValue, setDatePickerValue] = useState(() => new Date());
 
   useEffect(() => {
     if (parsed) {
@@ -95,6 +101,7 @@ export function SmartInputReviewSheet({
   const categoryList = [...SMART_INPUT_CATEGORIES];
 
   return (
+    <>
     <BottomSheet
       ref={bottomSheetRef}
       index={-1}
@@ -143,13 +150,19 @@ export function SmartInputReviewSheet({
               ))}
             </View>
             <View style={styles.row}>
-              <TextInput
-                style={[styles.inputSmall, { color: theme.text, borderColor: theme.border }]}
-                value={reminder.nextDueISO ?? ''}
-                onChangeText={(t) => setReminder((r) => (r ? { ...r, nextDueISO: t || null } : null))}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={theme.textTertiary}
-              />
+              <TouchableOpacity
+                style={[styles.inputSmall, styles.dateTouch, { borderColor: theme.border, borderWidth: 1 }]}
+                onPress={() => {
+                  const iso = reminder.nextDueISO ?? today;
+                  setDatePickerValue(new Date(iso + 'T12:00:00'));
+                  setDatePickerTarget('reminder');
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: reminder.nextDueISO ? theme.text : theme.textTertiary }}>
+                  {reminder.nextDueISO ? formatDisplayDate(reminder.nextDueISO) : 'Tap to pick date'}
+                </Text>
+              </TouchableOpacity>
               <View style={styles.pills}>
                 {(['one_time', 'daily', 'monthly', 'yearly'] as const).map((c) => (
                   <TouchableOpacity
@@ -209,13 +222,19 @@ export function SmartInputReviewSheet({
                 keyboardType="decimal-pad"
                 placeholderTextColor={theme.textTertiary}
               />
-              <TextInput
-                style={[styles.inputSmall, { color: theme.text, borderColor: theme.border }]}
-                value={spending.dateISO ?? ''}
-                onChangeText={(t) => setSpending((s) => (s ? { ...s, dateISO: t || null } : null))}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={theme.textTertiary}
-              />
+              <TouchableOpacity
+                style={[styles.inputSmall, styles.dateTouch, { borderColor: theme.border, borderWidth: 1 }]}
+                onPress={() => {
+                  const iso = spending.dateISO ?? today;
+                  setDatePickerValue(new Date(iso + 'T12:00:00'));
+                  setDatePickerTarget('spending');
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: spending.dateISO ? theme.text : theme.textTertiary }}>
+                  {spending.dateISO ? formatDisplayDate(spending.dateISO) : 'Tap to pick date'}
+                </Text>
+              </TouchableOpacity>
             </View>
             <View style={styles.pills}>
               {(['one_time', 'daily', 'monthly', 'yearly'] as const).map((c) => (
@@ -239,6 +258,66 @@ export function SmartInputReviewSheet({
         </TouchableOpacity>
       </ScrollView>
     </BottomSheet>
+    {datePickerTarget && Platform.OS === 'android' && (
+      <DateTimePicker
+        value={datePickerValue}
+        mode="date"
+        onChange={(event, date) => {
+          setDatePickerTarget(null);
+          if (event.type !== 'dismissed' && date) {
+            const iso = dateToISOString(date);
+            if (datePickerTarget === 'reminder') {
+              setReminder((r) => (r ? { ...r, nextDueISO: iso } : null));
+            } else if (datePickerTarget === 'spending') {
+              setSpending((s) => (s ? { ...s, dateISO: iso } : null));
+            }
+          }
+        }}
+        textColor="#000000"
+      />
+    )}
+    {datePickerTarget && Platform.OS === 'ios' && (
+      <Modal visible transparent animationType="fade">
+        <View style={styles.datePickerModalWrap}>
+          <Pressable
+            style={[styles.datePickerOverlay, { backgroundColor: 'rgba(0,0,0,0.35)' }]}
+            onPress={() => setDatePickerTarget(null)}
+          />
+          <View style={[styles.datePickerSheet, { backgroundColor: theme.surfaceElevated ?? theme.surface }]}>
+            <View style={[styles.datePickerHeader, { borderBottomColor: theme.border }]}>
+              <TouchableOpacity onPress={() => setDatePickerTarget(null)} hitSlop={12}>
+                <Text style={[styles.datePickerBtn, { color: theme.textTertiary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={[styles.datePickerTitle, { color: theme.text }]}>Pick date</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  const iso = dateToISOString(datePickerValue);
+                  if (datePickerTarget === 'reminder') {
+                    setReminder((r) => (r ? { ...r, nextDueISO: iso } : null));
+                  } else if (datePickerTarget === 'spending') {
+                    setSpending((s) => (s ? { ...s, dateISO: iso } : null));
+                  }
+                  setDatePickerTarget(null);
+                }}
+                hitSlop={12}
+              >
+                <Text style={[styles.datePickerBtn, { color: theme.tint }]}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.datePickerWheelWrap}>
+              <DateTimePicker
+                value={datePickerValue}
+                mode="date"
+                onChange={(_, d) => d && setDatePickerValue(d)}
+                display="spinner"
+                textColor="#000000"
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+    )}
+    </>
   );
 }
 
@@ -267,6 +346,25 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     fontSize: 14,
   },
+  dateTouch: { justifyContent: 'center' },
+  datePickerModalWrap: { flex: 1, justifyContent: 'flex-end' },
+  datePickerOverlay: { flex: 1 },
+  datePickerSheet: {
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    paddingBottom: 34,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+  },
+  datePickerTitle: { fontSize: 17, fontWeight: '600' },
+  datePickerBtn: { fontSize: 17 },
+  datePickerWheelWrap: { alignItems: 'center' },
   label: { fontSize: 12, marginTop: spacing.xs },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.sm },
   chip: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full },

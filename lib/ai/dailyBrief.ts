@@ -1,6 +1,6 @@
-import { callAI } from './client';
 import { dailyBriefSchema, type DailyBriefResult } from './schemas';
 import { todayISO } from '../date';
+import { generateDailyBriefWithGemini } from './dailyBriefGemini';
 
 export interface DailyBriefInput {
   upcomingItems: { title: string; nextDueISO: string }[];
@@ -41,23 +41,15 @@ export async function generateDailyBrief(input: DailyBriefInput): Promise<DailyB
     return { lines: cached.lines };
   }
 
-  const raw = await callAI<unknown>('daily_brief', input);
-  const parsed = dailyBriefSchema.safeParse(raw);
-  if (!parsed.success) {
-    throw new Error(`AI daily brief invalid: ${parsed.error.message}`);
-  }
-  cache.set(dateKey, { lines: parsed.data.lines, inputHash });
-  return parsed.data;
+  const parsed = await generateDailyBriefWithGemini(input);
+  cache.set(dateKey, { lines: parsed.lines, inputHash });
+  return parsed;
 }
 
 /** Regenerate brief (e.g. for testing); bypasses cache for this call. */
 export async function regenerateDailyBrief(input: DailyBriefInput): Promise<DailyBriefResult> {
-  const raw = await callAI<unknown>('daily_brief', input);
-  const parsed = dailyBriefSchema.safeParse(raw);
-  if (!parsed.success) {
-    throw new Error(`AI daily brief invalid: ${parsed.error.message}`);
-  }
+  const parsed = await generateDailyBriefWithGemini(input);
   const dateKey = todayISO();
-  cache.set(dateKey, { lines: parsed.data.lines, inputHash: hashInput(input) });
-  return parsed.data;
+  cache.set(dateKey, { lines: parsed.lines, inputHash: hashInput(input) });
+  return parsed;
 }

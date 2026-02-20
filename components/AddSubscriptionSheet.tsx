@@ -1,11 +1,13 @@
-import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal, Pressable, Platform } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useColorScheme } from '@/components/useColorScheme';
 import { colors, spacing, radius } from '@/constants/Theme';
+import { formatDisplayDate, todayISO, dateToISOString } from '@/lib/date';
 import type { Subscription } from '@/lib/types';
 
 const schema = z.object({
@@ -30,6 +32,8 @@ export function AddSubscriptionSheet({ bottomSheetRef, onSubmit }: AddSubscripti
     control,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -58,7 +62,12 @@ export function AddSubscriptionSheet({ bottomSheetRef, onSubmit }: AddSubscripti
     [onSubmit, bottomSheetRef, reset]
   );
 
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerValue, setDatePickerValue] = useState(() => new Date());
+  const nextDueValue = watch('nextDueISO');
+
   return (
+    <>
     <BottomSheet
       ref={bottomSheetRef}
       index={-1}
@@ -131,16 +140,21 @@ export function AddSubscriptionSheet({ bottomSheetRef, onSubmit }: AddSubscripti
         <Controller
           control={control}
           name="nextDueISO"
-          render={({ field: { onChange, value } }) => (
+          render={({ field: { value } }) => (
             <View style={styles.field}>
               <Text style={[styles.label, { color: theme.textSecondary }]}>Next due</Text>
-              <TextInput
-                style={[styles.input, { color: theme.text, backgroundColor: theme.pillBg }]}
-                value={value}
-                onChangeText={onChange}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={theme.textTertiary}
-              />
+              <TouchableOpacity
+                style={[styles.input, styles.dateTouch, { backgroundColor: theme.pillBg }]}
+                onPress={() => {
+                  setDatePickerValue(new Date((value || todayISO()) + 'T12:00:00'));
+                  setShowDatePicker(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: value ? theme.text : theme.textTertiary }}>
+                  {value ? formatDisplayDate(value) : 'Tap to pick date'}
+                </Text>
+              </TouchableOpacity>
               {errors.nextDueISO && (
                 <Text style={[styles.error, { color: theme.danger }]}>{errors.nextDueISO.message}</Text>
               )}
@@ -155,6 +169,56 @@ export function AddSubscriptionSheet({ bottomSheetRef, onSubmit }: AddSubscripti
         </TouchableOpacity>
       </View>
     </BottomSheet>
+    {showDatePicker && Platform.OS === 'android' && (
+      <DateTimePicker
+        value={datePickerValue}
+        mode="date"
+        onChange={(event, date) => {
+          setShowDatePicker(false);
+          if (event.type !== 'dismissed' && date) {
+            setValue('nextDueISO', dateToISOString(date));
+          }
+        }}
+        textColor="#000000"
+      />
+    )}
+    {showDatePicker && Platform.OS === 'ios' && (
+      <Modal visible transparent animationType="fade">
+        <View style={styles.datePickerModalWrap}>
+          <Pressable
+            style={[styles.datePickerOverlay, { backgroundColor: 'rgba(0,0,0,0.35)' }]}
+            onPress={() => setShowDatePicker(false)}
+          />
+          <View style={[styles.datePickerSheet, { backgroundColor: theme.surfaceElevated ?? theme.surface }]}>
+            <View style={[styles.datePickerHeader, { borderBottomColor: theme.border }]}>
+              <TouchableOpacity onPress={() => setShowDatePicker(false)} hitSlop={12}>
+                <Text style={[styles.datePickerBtn, { color: theme.textTertiary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={[styles.datePickerTitle, { color: theme.text }]}>Next due</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setValue('nextDueISO', dateToISOString(datePickerValue));
+                  setShowDatePicker(false);
+                }}
+                hitSlop={12}
+              >
+                <Text style={[styles.datePickerBtn, { color: theme.tint }]}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.datePickerWheelWrap}>
+              <DateTimePicker
+                value={datePickerValue}
+                mode="date"
+                onChange={(_, d) => d && setDatePickerValue(d)}
+                display="spinner"
+                textColor="#000000"
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+    )}
+    </>
   );
 }
 
@@ -164,6 +228,25 @@ const styles = StyleSheet.create({
   field: { marginBottom: spacing.lg },
   label: { fontSize: 13, marginBottom: spacing.xs },
   input: { borderRadius: radius.lg, padding: spacing.lg, fontSize: 16 },
+  dateTouch: { justifyContent: 'center' },
+  datePickerModalWrap: { flex: 1, justifyContent: 'flex-end' },
+  datePickerOverlay: { flex: 1 },
+  datePickerSheet: {
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingBottom: 34,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+  },
+  datePickerTitle: { fontSize: 17, fontWeight: '600' },
+  datePickerBtn: { fontSize: 17 },
+  datePickerWheelWrap: { alignItems: 'center' },
   error: { fontSize: 12, marginTop: spacing.xs },
   pills: { flexDirection: 'row', gap: spacing.sm },
   pill: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.full },

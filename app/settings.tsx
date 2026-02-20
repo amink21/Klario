@@ -11,6 +11,7 @@ import {
   Platform,
   Modal,
   Pressable,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -61,6 +62,10 @@ function dateToTimeString(d: Date): string {
 }
 
 const PRESET_REMIND_DAYS = [1, 7, 14, 30] as const;
+
+/** URLs for Support and Privacy Policy (set in .env: EXPO_PUBLIC_SUPPORT_URL, EXPO_PUBLIC_PRIVACY_POLICY_URL). */
+const SUPPORT_URL = (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_SUPPORT_URL) || 'https://example.com/support';
+const PRIVACY_POLICY_URL = (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_PRIVACY_POLICY_URL) || 'https://example.com/privacy';
 
 export default function SettingsScreen() {
   const colorScheme = useColorScheme();
@@ -116,6 +121,28 @@ export default function SettingsScreen() {
     await signOut();
     await load();
   };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete account?',
+      'This will permanently delete your account and all your data (reminders, transactions, subscriptions, settings). This cannot be undone and there is no way to get it back.\n\nAre you sure you want to delete your account?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete my account',
+          style: 'destructive',
+          onPress: async () => {
+            await resetAllData();
+            await signOut();
+            await load();
+          },
+        },
+      ]
+    );
+  };
+
+  const openSupport = () => Linking.openURL(SUPPORT_URL);
+  const openPrivacyPolicy = () => Linking.openURL(PRIVACY_POLICY_URL);
 
   const handleMorningBrief = async (value: boolean) => {
     const next = { ...settings!, morningBrief: value };
@@ -250,6 +277,7 @@ export default function SettingsScreen() {
               Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to a .env file in the project root, then restart the app (npm start) to sign in and sync data to the cloud.
             </Text>
           ) : session?.user ? (
+            <>
             <View style={styles.settingRow}>
               <View style={styles.settingLabelWrap}>
                 <Text style={[styles.label, { color: theme.text }]}>Signed in as {session.user.email}</Text>
@@ -258,6 +286,25 @@ export default function SettingsScreen() {
                 <Text style={styles.authBtnText}>Sign out</Text>
               </TouchableOpacity>
             </View>
+            <View style={[styles.settingRow, styles.rowBorder, { borderTopColor: theme.border }]}>
+              <TouchableOpacity style={styles.linkRow} onPress={openSupport} activeOpacity={0.7}>
+                <Text style={[styles.label, { color: theme.text }]}>Support</Text>
+                <FontAwesome name="external-link" size={12} color={theme.textTertiary} />
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.settingRow, styles.rowBorder, { borderTopColor: theme.border }]}>
+              <TouchableOpacity style={styles.linkRow} onPress={openPrivacyPolicy} activeOpacity={0.7}>
+                <Text style={[styles.label, { color: theme.text }]}>Privacy policy</Text>
+                <FontAwesome name="external-link" size={12} color={theme.textTertiary} />
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.settingRow, styles.rowBorder, { borderTopColor: theme.border }]}>
+              <TouchableOpacity style={styles.linkRow} onPress={handleDeleteAccount} activeOpacity={0.7}>
+                <Text style={[styles.label, { color: theme.danger }]}>Delete account</Text>
+                <FontAwesome name="chevron-right" size={12} color={theme.textTertiary} />
+              </TouchableOpacity>
+            </View>
+            </>
           ) : (
             <>
               <TextInput
@@ -299,6 +346,18 @@ export default function SettingsScreen() {
               <Text style={[styles.subtitle, { color: theme.textTertiary, marginTop: spacing.sm }]}>
                 Sign in to sync your data to the cloud.
               </Text>
+            <View style={[styles.settingRow, styles.rowBorder, { borderTopColor: theme.border, marginTop: spacing.md }]}>
+              <TouchableOpacity style={styles.linkRow} onPress={openSupport} activeOpacity={0.7}>
+                <Text style={[styles.label, { color: theme.text }]}>Support</Text>
+                <FontAwesome name="external-link" size={12} color={theme.textTertiary} />
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.settingRow, styles.rowBorder, { borderTopColor: theme.border }]}>
+              <TouchableOpacity style={styles.linkRow} onPress={openPrivacyPolicy} activeOpacity={0.7}>
+                <Text style={[styles.label, { color: theme.text }]}>Privacy policy</Text>
+                <FontAwesome name="external-link" size={12} color={theme.textTertiary} />
+              </TouchableOpacity>
+            </View>
             </>
           )}
         </View>
@@ -704,6 +763,12 @@ const styles = StyleSheet.create({
   },
   settingLabelWrap: { flex: 1, marginRight: spacing.md },
   rowBorder: { borderTopWidth: 1, paddingTop: spacing.md, marginTop: spacing.md },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
   label: { fontSize: 16, fontWeight: '600' },
   subtitle: { fontSize: 13, marginTop: 2, lineHeight: 18 },
   value: { fontSize: 15, fontWeight: '500' },
