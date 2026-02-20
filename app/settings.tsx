@@ -44,6 +44,8 @@ import {
   updateMorningBriefSchedule,
   previewMorningBriefNotification,
   previewDueReminderNotification,
+  previewNudgeNotification,
+  DEMO_NUDGE_SAMPLES,
   cancelNudgeNotifications,
 } from '@/lib/notifications';
 import { normalizeDueTime } from '@/lib/date';
@@ -661,6 +663,30 @@ export default function SettingsScreen() {
                   Due reminder
                 </Text>
               </TouchableOpacity>
+            </View>
+            <Text style={[styles.label, { color: theme.text, marginTop: spacing.lg, marginBottom: spacing.sm }]}>
+              Smart nudges (demos)
+            </Text>
+            <Text style={[styles.subtitle, { color: theme.textTertiary, marginBottom: spacing.md }]}>
+              Sample how contextual nudges look
+            </Text>
+            <View style={styles.previewButtonRow}>
+              {DEMO_NUDGE_SAMPLES.map((demo) => (
+                <TouchableOpacity
+                  key={demo.label}
+                  style={[styles.previewButton, { backgroundColor: theme.pillBg }]}
+                  onPress={async () => {
+                    const ok = await previewNudgeNotification(demo.title, demo.body);
+                    if (!ok) Alert.alert('Permission needed', 'Enable notifications in your device settings to preview.');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <FontAwesome name="lightbulb-o" size={18} color={theme.tint} style={styles.previewButtonIcon} />
+                  <Text style={[styles.previewButtonText, { color: theme.text }]}>
+                    {demo.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
         </View>
