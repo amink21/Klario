@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Modal,
   Pressable,
   Linking,
+  RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,23 +23,13 @@ import { useStore } from '@/lib/store';
 import { useAuth } from '@/contexts/AuthContext';
 import { isSupabaseConnected } from '@/lib/supabase';
 import { colors, spacing, radius } from '@/constants/Theme';
+import { clearHasOnboarded } from '@/lib/onboardingStorage';
 import {
   getSettings,
   setSettings as setSettingsStorage,
   resetAllData,
-  setSeeded,
 } from '@/lib/storage';
-import {
-  demoLifeItems,
-  demoTransactions,
-  defaultSettings,
-} from '@/lib/seed';
-import {
-  setLifeItems,
-  setTransactions,
-  setSubscriptions,
-  setSettings,
-} from '@/lib/storage';
+import { defaultSettings } from '@/lib/seed';
 import Constants from 'expo-constants';
 import {
   updateMorningBriefSchedule,
@@ -81,7 +72,7 @@ const PRIVACY_POLICY_SECTIONS = [
   { title: 'Data we collect and use', body: '• Account data. If you sign in (e.g. with email and password), we store your account credentials and a unique identifier so you can sync data across devices.\n\n• Synced content. When you sign in, items (reminders, bills), transactions, and app settings may be stored on our servers so you can access them from other devices. This data is tied to your account.\n\n• Subscriptions. Subscription lists are stored only on your device and are not synced to our servers.\n\n• Import and processing. If you use file or PDF import, the file content may be sent to our backend or a third-party service to extract text or transactions. We do not use this content for advertising or unrelated purposes.' },
   { title: 'Data we do not sell', body: 'We do not sell your personal data or synced content to third parties for advertising or marketing.' },
   { title: 'Security', body: 'We use industry-standard practices (including encryption in transit and, where applicable, at rest) to protect your account and synced data. You are responsible for keeping your sign-in credentials secure.' },
-  { title: 'Your choices', body: '• You can use the app without signing in; in that case, all data stays on your device.\n\n• You can sign out or delete your account; we will delete or anonymize your account and synced data in line with our retention policy.\n\n• You can clear all data or reset demo data from the app\'s Settings at any time.' },
+  { title: 'Your choices', body: '• You can use the app without signing in; in that case, all data stays on your device.\n\n• You can sign out or delete your account; we will delete or anonymize your account and synced data in line with our retention policy.\n\n• You can clear all data from the app\'s Settings at any time.' },
   { title: 'Children', body: 'Klario is not directed at children under 13. We do not knowingly collect personal information from children under 13. If you believe we have received such information, please contact us and we will delete it.' },
   { title: 'Changes', body: 'We may update this Privacy Policy from time to time. We will post the revised policy on this page and update the "Last updated" date. Continued use of the app after changes constitutes acceptance of the updated policy.' },
   { title: 'Contact', body: `Questions about this Privacy Policy or our practices can be sent to ${SUPPORT_EMAIL}.` },
@@ -94,24 +85,44 @@ export default function SettingsScreen() {
   const router = useRouter();
   const settings = useStore((s) => s.settings);
   const setSettingsStore = useStore((s) => s.setSettings);
-  const setSubscriptionsStore = useStore((s) => s.setSubscriptions);
   const load = useStore((s) => s.load);
   const [customRemindDays, setCustomRemindDays] = useState<string>('');
-  const { session, signInWithPassword, signUp, signOut } = useAuth();
+  const { session, signInWithPassword, signUp, signInWithOAuth, signInWithAppleNative, signOut } = useAuth();
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+  const [appleAuthModule, setAppleAuthModule] = useState<typeof import('expo-apple-authentication') | null>(null);
   const [showBriefTimePicker, setShowBriefTimePicker] = useState(false);
   const [briefTimePickerValue, setBriefTimePickerValue] = useState(() =>
     timeStringToDate('07:00')
   );
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    import('@/lib/appleAuth')
+      .then(({ isAppleAuthAvailable }) => isAppleAuthAvailable())
+      .then((available) => {
+        setAppleAuthAvailable(available);
+        if (available) {
+          import('expo-apple-authentication').then((mod) => setAppleAuthModule(mod)).catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSignIn = async () => {
     if (!authEmail.trim() || !authPassword) {
@@ -124,6 +135,24 @@ export default function SettingsScreen() {
     setAuthLoading(false);
     if (error) setAuthError(error.message);
     else await load();
+  };
+
+  const handleOAuthGoogle = async () => {
+    setAuthLoading(true);
+    setAuthError(null);
+    const { error } = await signInWithOAuth('google');
+    setAuthLoading(false);
+    if (error) setAuthError(error.message);
+    else await load();
+  };
+
+  const handleAppleNative = async () => {
+    setAuthLoading(true);
+    setAuthError(null);
+    const { error } = await signInWithAppleNative();
+    setAuthLoading(false);
+    if (error && !error.message.toLowerCase().includes('cancel')) setAuthError(error.message);
+    else if (!error) await load();
   };
 
   const handleSignUp = async () => {
@@ -214,47 +243,6 @@ export default function SettingsScreen() {
     if (PRESET_REMIND_DAYS.includes(clamped as 1 | 7 | 14 | 30)) setCustomRemindDays('');
   };
 
-  const handleResetDemo = () => {
-    Alert.alert(
-      'Reset demo data',
-      'Replace all your data with sample items, transactions, and subscriptions. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            await resetAllData();
-            await setLifeItems(demoLifeItems());
-            await setTransactions(demoTransactions());
-            await setSubscriptions([]);
-            await setSettings(defaultSettings());
-            await setSeeded();
-            await load();
-          },
-        },
-      ]
-    );
-  };
-
-  const handleClearSubscriptions = () => {
-    Alert.alert(
-      'Clear subscriptions',
-      'Remove all subscriptions from this device? This does not affect transactions.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear',
-          style: 'destructive',
-          onPress: async () => {
-            await setSubscriptionsStore([]);
-            await load();
-          },
-        },
-      ]
-    );
-  };
-
   const handleClearAllData = () => {
     Alert.alert(
       'Clear all data',
@@ -297,6 +285,9 @@ export default function SettingsScreen() {
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.tint} />
+        }
       >
         {/* Account */}
         <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Account</Text>
@@ -375,6 +366,42 @@ export default function SettingsScreen() {
               <Text style={[styles.subtitle, { color: theme.textTertiary, marginTop: spacing.sm }]}>
                 Sign in to sync your data to the cloud.
               </Text>
+              <Text style={[styles.subtitle, { color: theme.textTertiary, marginTop: spacing.lg, marginBottom: spacing.sm }]}>
+                Or use Google or Apple
+              </Text>
+              <View style={styles.authBtnRow}>
+                <TouchableOpacity
+                  style={[styles.authBtn, { backgroundColor: theme.pillBg, marginTop: 0, flex: 1 }]}
+                  onPress={handleOAuthGoogle}
+                  disabled={authLoading}
+                >
+                  <Text style={[styles.authBtnText, { color: theme.text }]}>Google</Text>
+                </TouchableOpacity>
+                {appleAuthAvailable && appleAuthModule != null ? (
+                  (() => {
+                    const AppleBtn = appleAuthModule.AppleAuthenticationButton;
+                    return (
+                      <View style={{ flex: 1, height: 44, marginLeft: spacing.sm }}>
+                        <AppleBtn
+                          buttonType={appleAuthModule.AppleAuthenticationButtonType.SIGN_IN}
+                          buttonStyle={appleAuthModule.AppleAuthenticationButtonStyle.BLACK}
+                          cornerRadius={8}
+                          style={{ width: '100%', height: 44 }}
+                          onPress={handleAppleNative}
+                        />
+                      </View>
+                    );
+                  })()
+                ) : Platform.OS === 'ios' ? (
+                  <TouchableOpacity
+                    style={[styles.authBtn, { backgroundColor: theme.pillBg, marginTop: 0, flex: 1, marginLeft: spacing.sm }]}
+                    onPress={handleAppleNative}
+                    disabled={authLoading}
+                  >
+                    <Text style={[styles.authBtnText, { color: theme.text }]}>Apple</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
             <View style={[styles.settingRow, styles.rowBorder, { borderTopColor: theme.border, marginTop: spacing.md }]}>
               <TouchableOpacity style={styles.linkRow} onPress={openSupportModal} activeOpacity={0.7}>
                 <Text style={[styles.label, { color: theme.text }]}>Support</Text>
@@ -623,6 +650,7 @@ export default function SettingsScreen() {
               </View>
             )}
           </View>
+          {/* Preview notifications – commented out
           <View
             style={[
               styles.settingRowColumn,
@@ -689,6 +717,7 @@ export default function SettingsScreen() {
               ))}
             </View>
           </View>
+          */}
         </View>
 
         {/* Data */}
@@ -698,38 +727,6 @@ export default function SettingsScreen() {
         <View style={[styles.card, { backgroundColor: theme.surface }]}>
           <TouchableOpacity
             style={styles.actionRow}
-            onPress={handleResetDemo}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.actionLabel, { color: theme.text }]}>
-              Reset demo data
-            </Text>
-            <Text style={[styles.actionHint, { color: theme.textTertiary }]}>
-              Load sample items & transactions
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.actionRow,
-              styles.actionRowBorder,
-              { borderTopColor: theme.border },
-            ]}
-            onPress={handleClearSubscriptions}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.actionLabel, { color: theme.text }]}>
-              Clear subscriptions
-            </Text>
-            <Text style={[styles.actionHint, { color: theme.textTertiary }]}>
-              Remove all subscriptions (e.g. dummy data)
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.actionRow,
-              styles.actionRowBorder,
-              { borderTopColor: theme.border },
-            ]}
             onPress={handleClearAllData}
             activeOpacity={0.7}
           >
@@ -764,6 +761,29 @@ export default function SettingsScreen() {
             <Text style={[styles.value, { color: theme.textSecondary }]}>
               {appVersion}
             </Text>
+          </View>
+          <View
+            style={[
+              styles.settingRow,
+              styles.rowBorder,
+              { borderTopColor: theme.border },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.linkRow}
+              onPress={async () => {
+                await clearHasOnboarded();
+                Alert.alert(
+                  'Onboarding reset',
+                  'Close the app completely and reopen it to see the onboarding flow again.',
+                  [{ text: 'OK' }]
+                );
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.label, { color: theme.text }]}>Show onboarding again</Text>
+              <FontAwesome name="chevron-right" size={12} color={theme.textTertiary} />
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>

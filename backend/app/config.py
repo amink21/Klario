@@ -42,3 +42,8 @@ CORS_ORIGINS: str = os.environ.get("CORS_ORIGINS", "*")
 
 # Default timezone for date parsing
 DEFAULT_TIMEZONE: str = os.environ.get("TIMEZONE", "America/Montreal")
+
+# OpenRouter fallback for PDF parsing when primary Gemini fails (429, timeout, 500)
+OPENROUTER_API_KEY: str = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
+OPENROUTER_URL: str = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_MODEL: str = "google/gemini-2.5-flash"

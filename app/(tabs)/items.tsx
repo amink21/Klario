@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useMemo, useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,13 @@ import {
   TouchableOpacity,
   FlatList,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useStore } from '@/lib/store';
 import { colors, spacing, radius } from '@/constants/Theme';
 import { SwipeableReminderRow } from '@/components/SwipeableReminderRow';
-import { SmartInputBar } from '@/components/SmartInputBar';
+import { SmartInputBar, type InputBoxStatus } from '@/components/SmartInputBar';
 import { SmartInputReviewSheet } from '@/components/SmartInputReviewSheet';
 import { Toast } from '@/components/Toast';
 import { AddItemSheet } from '@/components/AddItemSheet';
@@ -47,6 +48,14 @@ export default function ItemsScreen() {
   const [smartInputLoading, setSmartInputLoading] = React.useState(false);
   const [reviewParsed, setReviewParsed] = React.useState<import('@/lib/ai/schemas').SmartInputParseResult | null>(null);
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
+  const [inputBoxStatus, setInputBoxStatus] = React.useState<InputBoxStatus>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
 
   const addSheetRef = useRef<BottomSheet>(null);
   const detailsSheetRef = useRef<BottomSheet>(null);
@@ -154,22 +163,24 @@ export default function ItemsScreen() {
         await setSubscriptions([...subscriptions, sub]);
       },
     });
-    if (result.toastMessage) setToastMessage(result.toastMessage);
     await load();
     return result;
   };
 
   const handleSmartInputSubmit = async (text: string) => {
     setSmartInputLoading(true);
+    setInputBoxStatus('thinking');
     try {
       const outcome = await handleSmartInput(text, 'items');
       if (outcome.action === 'error') {
+        setInputBoxStatus(null);
         Alert.alert('Couldn’t parse', outcome.error + '\n\nOpen Add Item to enter manually.');
         setDraftQuickAdd(text);
         addSheetRef.current?.snapToIndex(0);
         return;
       }
       if (outcome.action === 'review') {
+        setInputBoxStatus(null);
         setReviewParsed(outcome.parsed);
         reviewSheetRef.current?.snapToIndex(0);
         return;
@@ -183,7 +194,10 @@ export default function ItemsScreen() {
         outcome.parsed.spending != null &&
         (outcome.parsed.spending.amountCents ?? 0) > 0;
       const result = await runExecute(outcome.parsed, createReminder, createSpending);
-      if (result.toastMessage) setToastMessage(result.toastMessage);
+      const resultStatus: InputBoxStatus =
+        createReminder && createSpending ? 'both' : createReminder ? 'reminder' : 'transaction';
+      setInputBoxStatus(resultStatus);
+      setTimeout(() => setInputBoxStatus(null), 2000);
       if (result.created.lifeItemId) {
         const nextItems = await import('@/lib/storage').then((r) => r.getLifeItems());
         const newItem = nextItems.find((i) => i.id === result.created.lifeItemId) ?? null;
@@ -204,6 +218,14 @@ export default function ItemsScreen() {
   }) => {
     const result = await runExecute(payload.parsed, payload.createReminder, payload.createSpending);
     setReviewParsed(null);
+    const resultStatus: InputBoxStatus =
+      payload.createReminder && payload.createSpending
+        ? 'both'
+        : payload.createReminder
+          ? 'reminder'
+          : 'transaction';
+    setInputBoxStatus(resultStatus);
+    setTimeout(() => setInputBoxStatus(null), 2000);
     if (result.created.lifeItemId) {
       const nextItems = await import('@/lib/storage').then((r) => r.getLifeItems());
       const newItem = nextItems.find((i) => i.id === result.created.lifeItemId) ?? null;
@@ -301,6 +323,7 @@ export default function ItemsScreen() {
               context="items"
               onSubmit={handleSmartInputSubmit}
               loading={smartInputLoading}
+              boxStatus={inputBoxStatus}
             />
           </View>
         </View>
@@ -334,6 +357,9 @@ export default function ItemsScreen() {
         data={filtered}
         keyExtractor={(i) => i.id}
         contentContainerStyle={[styles.list, { paddingBottom: 100 }]}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.tint} />
+        }
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Text style={[styles.empty, { color: theme.textTertiary }]}>

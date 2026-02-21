@@ -1,5 +1,6 @@
-import React, { useRef, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, Modal, FlatList } from 'react-native';
+import React, { useRef, useEffect, useMemo, useCallback, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, Modal, FlatList, RefreshControl } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useStore } from '@/lib/store';
 import { colors, spacing, radius } from '@/constants/Theme';
@@ -11,7 +12,8 @@ import { AddTransactionSheet } from '@/components/AddTransactionSheet';
 import { SwipeableTransactionRow } from '@/components/SwipeableTransactionRow';
 import { TabScreenAnimation } from '@/components/TabScreenAnimation';
 import { PdfExtractingModal, type PdfExtractingStatus } from '@/components/PdfExtractingModal';
-import BottomSheet from '@gorhom/bottom-sheet';
+import { type InputBoxStatus } from '@/components/SmartInputBar';
+import BottomSheet, { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { formatCurrency } from '@/lib/currency';
 import { todayISO, startOfMonthFor, endOfMonthFor, formatMonthYear } from '@/lib/date';
 // import { SubscriptionWasteCard } from '@/components/SubscriptionWasteCard';
@@ -26,6 +28,7 @@ import { handleSmartInput } from '@/lib/smartInput/handleSmartInput';
 import { executeSmartActions } from '@/lib/smartInput/executeSmartActions';
 
 export default function MoneyScreen() {
+  const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = colors[colorScheme ?? 'light'];
   const items = useStore((s) => s.items);
@@ -41,7 +44,7 @@ export default function MoneyScreen() {
   const settings = useStore((s) => s.settings);
 
   const addItemRef = useRef<BottomSheet>(null);
-  const addTransactionRef = useRef<BottomSheet>(null);
+  const addTransactionRef = useRef<BottomSheetModal>(null);
   const reviewSheetRef = useRef<BottomSheet>(null);
   const [selectedItem, setSelectedItem] = React.useState<LifeItem | null>(null);
   const [selectedTransaction, setSelectedTransaction] = React.useState<Transaction | null>(null);
@@ -56,19 +59,21 @@ export default function MoneyScreen() {
   const [pdfExtractingVisible, setPdfExtractingVisible] = React.useState(false);
   const [pdfExtractingStatus, setPdfExtractingStatus] = React.useState<PdfExtractingStatus>('working');
   const [pdfExtractingError, setPdfExtractingError] = React.useState<string | null>(null);
+  const [inputBoxStatus, setInputBoxStatus] = React.useState<InputBoxStatus>(null);
   const now = new Date();
   const [selectedYear, setSelectedYear] = React.useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = React.useState(now.getMonth() + 1);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
 
   useEffect(() => {
     load();
   }, [load]);
-
-  useEffect(() => {
-    if (selectedTransaction != null && addTransactionRef.current) {
-      addTransactionRef.current.snapToIndex(0);
-    }
-  }, [selectedTransaction]);
 
   const handleAddItem = async (item: Omit<LifeItem, 'id' | 'status'>) => {
     const { addLifeItem } = await import('@/lib/storage');
@@ -133,16 +138,17 @@ export default function MoneyScreen() {
         await setSubscriptions([...subscriptions, sub]);
       },
     });
-    if (result.toastMessage) setToastMessage(result.toastMessage);
     await load();
     return result;
   };
 
   const handleSmartInputSubmit = async (text: string) => {
     setSmartInputLoading(true);
+    setInputBoxStatus('thinking');
     try {
       const outcome = await handleSmartInput(text, 'money');
       if (outcome.action === 'error') {
+        setInputBoxStatus(null);
         Alert.alert('Couldn’t parse', outcome.error + '\n\nOpen Add Item to enter manually.');
         setDraftQuickAdd(text);
         setSelectedItem(null);
@@ -150,6 +156,7 @@ export default function MoneyScreen() {
         return;
       }
       if (outcome.action === 'review') {
+        setInputBoxStatus(null);
         setReviewParsed(outcome.parsed);
         reviewSheetRef.current?.snapToIndex(0);
         return;
@@ -163,7 +170,10 @@ export default function MoneyScreen() {
         outcome.parsed.spending != null &&
         (outcome.parsed.spending.amountCents ?? 0) > 0;
       await runExecute(outcome.parsed, createReminder, createSpending);
-      if (outcome.toastMessage) setToastMessage(outcome.toastMessage);
+      const resultStatus: InputBoxStatus =
+        createReminder && createSpending ? 'both' : createReminder ? 'reminder' : 'transaction';
+      setInputBoxStatus(resultStatus);
+      setTimeout(() => setInputBoxStatus(null), 2000);
     } finally {
       setSmartInputLoading(false);
     }
@@ -176,6 +186,14 @@ export default function MoneyScreen() {
   }) => {
     await runExecute(payload.parsed, payload.createReminder, payload.createSpending);
     setReviewParsed(null);
+    const resultStatus: InputBoxStatus =
+      payload.createReminder && payload.createSpending
+        ? 'both'
+        : payload.createReminder
+          ? 'reminder'
+          : 'transaction';
+    setInputBoxStatus(resultStatus);
+    setTimeout(() => setInputBoxStatus(null), 2000);
   };
 
   const handleUpdateItem = async (id: string, patch: Partial<LifeItem>) => {
@@ -431,12 +449,16 @@ export default function MoneyScreen() {
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.tint} />
+        }
       >
         <View style={styles.quickAddWrap}>
           <SmartInputBar
             context="money"
             onSubmit={handleSmartInputSubmit}
             loading={smartInputLoading}
+            boxStatus={inputBoxStatus}
           />
         </View>
         <View style={[styles.heroCard, { backgroundColor: theme.surface }]}>
@@ -489,7 +511,7 @@ export default function MoneyScreen() {
                 key={`tx-${t.id}-${i}`}
                 transaction={t}
                 isFirst={i === 0}
-                onPress={() => setSelectedTransaction(t)}
+                onPress={() => router.push(`/transaction/${t.id}`)}
                 onDelete={() => {
                   Alert.alert(
                     'Delete transaction',
@@ -589,7 +611,7 @@ export default function MoneyScreen() {
                             key={t.id}
                             transaction={t}
                             isFirst={i === 0}
-                            onPress={() => setSelectedTransaction(t)}
+                            onPress={() => router.push(`/transaction/${t.id}`)}
                             onDelete={() => {
                               Alert.alert(
                                 'Delete transaction',
@@ -680,13 +702,11 @@ export default function MoneyScreen() {
           onSubmit={async (tx) => {
             const id = generateId();
             await addTransaction({ ...tx, id });
-            setToastMessage('Added transaction');
             setSelectedTransaction(null);
           }}
           editTransaction={selectedTransaction}
           onUpdate={async (tx) => {
             await updateTransaction(tx);
-            setToastMessage('Updated');
             setSelectedTransaction(null);
           }}
           onClose={() => setSelectedTransaction(null)}
@@ -756,7 +776,7 @@ export default function MoneyScreen() {
                 <SwipeableTransactionRow
                   transaction={t}
                   isFirst={index === 0}
-                  onPress={() => { setSelectedTransaction(t); setViewAllSpendsVisible(false); }}
+                  onPress={() => { router.push(`/transaction/${t.id}`); setViewAllSpendsVisible(false); }}
                   onDelete={() => {
                     Alert.alert('Delete transaction', `Remove "${t.title}"?`, [
                       { text: 'Cancel', style: 'cancel' },

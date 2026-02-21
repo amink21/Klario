@@ -66,6 +66,27 @@ export function MorningBriefModal() {
       });
       const dueSoonCount = dueIn7Items.length + dueIn7Subs.length;
 
+      const overdueCount =
+        activeItems.filter((i) => daysUntil(i.nextDueISO) < 0).length +
+        currentSubs.filter((s) => daysUntil(s.nextDueISO) < 0).length;
+
+      const dueNext7Days = [
+        ...dueIn7Items
+          .sort((a, b) => a.nextDueISO.localeCompare(b.nextDueISO))
+          .map((i) => ({
+            title: i.title,
+            dateISO: i.nextDueISO,
+            amountCents: i.amountCents,
+          })),
+        ...dueIn7Subs
+          .sort((a, b) => a.nextDueISO.localeCompare(b.nextDueISO))
+          .map((s) => ({
+            title: s.title,
+            dateISO: s.nextDueISO,
+            amountCents: s.amountCents,
+          })),
+      ].sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+
       const forecastAmount = computeUpcomingTotal(activeItems, currentSubs, 30);
 
       const upcomingItems = [...activeItems]
@@ -79,6 +100,8 @@ export function MorningBriefModal() {
         forecastAmount,
         yesterdaySpend,
         topSpendCategory,
+        overdueCount,
+        dueNext7Days,
       };
     }
 

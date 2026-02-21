@@ -6,16 +6,19 @@ import { Stack, useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import 'react-native-reanimated';
 
 import { AuthProvider } from '@/contexts/AuthContext';
+import { OnboardingScreen } from '@/components/OnboardingScreen';
 import { StartupAnimation } from '@/components/StartupAnimation';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useStore } from '@/lib/store';
+import { getHasOnboarded, setHasOnboarded } from '@/lib/onboardingStorage';
 import { hasSeeded, setSeeded } from '@/lib/storage';
-import { demoLifeItems, demoTransactions, demoSubscriptions, defaultSettings } from '@/lib/seed';
+import { defaultSettings } from '@/lib/seed';
 import {
   setLifeItems,
   setTransactions,
@@ -32,6 +35,7 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [startupDone, setStartupDone] = useState(false);
+  const [hasOnboarded, setHasOnboardedState] = useState<boolean | null>(null);
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     Poppins_800ExtraBold: require('../assets/fonts/Poppins_800ExtraBold.ttf'),
@@ -48,7 +52,31 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
+  useEffect(() => {
+    if (!loaded) return;
+    getHasOnboarded().then(setHasOnboardedState);
+  }, [loaded]);
+
   if (!loaded) return null;
+
+  if (hasOnboarded === null) {
+    return <GestureHandlerRootView style={{ flex: 1 }} />;
+  }
+
+  if (hasOnboarded === false) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <OnboardingScreen
+          onComplete={() => {
+            setHasOnboarded().then(() => {
+              setHasOnboardedState(true);
+              setStartupDone(true);
+            });
+          }}
+        />
+      </GestureHandlerRootView>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -75,8 +103,8 @@ function RootLayoutNav() {
     (async () => {
       const seeded = await hasSeeded();
       if (!seeded) {
-        await setLifeItems(demoLifeItems());
-        await setTransactions(demoTransactions());
+        await setLifeItems([]);
+        await setTransactions([]);
         await setSubscriptions([]);
         await setSettings(defaultSettings());
         await setSeeded();
@@ -138,12 +166,15 @@ function RootLayoutNav() {
   }, [loaded, router, setShowMorningBriefModal, setDeepLinkItemId]);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="settings" options={{ headerShown: false }} />
-      </Stack>
-      <MorningBriefModal />
-    </ThemeProvider>
+    <BottomSheetModalProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="transaction/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="settings" options={{ headerShown: false }} />
+        </Stack>
+        <MorningBriefModal />
+      </ThemeProvider>
+    </BottomSheetModalProvider>
   );
 }

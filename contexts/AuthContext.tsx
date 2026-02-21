@@ -6,8 +6,10 @@ import {
   useCallback,
   ReactNode,
 } from 'react';
+import { Linking } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { createSessionFromUrl } from '@/lib/auth-helpers';
 
 type AuthContextType = {
   session: Session | null;
@@ -15,6 +17,8 @@ type AuthContextType = {
   signInWithPassword: (email: string, password: string) => Promise<{ error?: Error }>;
   signUp: (email: string, password: string) => Promise<{ error?: Error }>;
   signOut: () => Promise<void>;
+  signInWithOAuth: (provider: 'google') => Promise<{ error?: Error }>;
+  signInWithAppleNative: () => Promise<{ error?: Error }>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,6 +26,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const handleDeepLink = useCallback(async (url: string | null) => {
+    if (!url) return;
+    try {
+      await createSessionFromUrl(url);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   useEffect(() => {
     if (!supabase) {
@@ -38,6 +51,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const sub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
+    Linking.getInitialURL().then(handleDeepLink);
+    return () => sub.remove();
+  }, [handleDeepLink]);
+
   const signInWithPassword = useCallback(async (email: string, password: string) => {
     if (!supabase) return { error: new Error('Supabase not configured') };
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -50,6 +69,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error ?? undefined };
   }, []);
 
+  const signInWithOAuth = useCallback(async (provider: 'google' | 'apple') => {
+    const { signInWithOAuthProvider } = await import('@/lib/auth-helpers');
+    return signInWithOAuthProvider(provider);
+  }, []);
+
+  const signInWithAppleNative = useCallback(async () => {
+    const { signInWithAppleNative: doSignIn } = await import('@/lib/appleAuth');
+    const result = await doSignIn();
+    return result.success ? {} : { error: result.error };
+  }, []);
+
   const signOut = useCallback(async () => {
     if (supabase) await supabase.auth.signOut();
   }, []);
@@ -60,6 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInWithPassword,
     signUp,
     signOut,
+    signInWithOAuth,
+    signInWithAppleNative,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -24,7 +24,7 @@ from app.config import (
     MAX_UPLOAD_MB,
     RATE_LIMIT_PER_MINUTE,
 )
-from app.gemini_client import generate_daily_brief, parse_pdf_with_gemini
+from app.gemini_client import BOTH_FAILED_MSG, generate_daily_brief, parse_pdf_with_gemini
 from app.parser.statement_parser import parse_statement
 from app.schemas import DailyBriefRequest, DailyBriefResponse, GeminiParseResponse, ParseStatementResponse
 from app.utils.files import cleanup_temp_file, save_temp_pdf, validate_pdf_upload
@@ -175,7 +175,8 @@ async def parse_statement_gemini(
     except ValueError as e:
         msg = str(e)
         logger.warning("[%s] Gemini parse error: %s", request_id, msg[:200])
-        # Key expired/invalid → 400 so client can show actionable message
+        if msg == BOTH_FAILED_MSG:
+            raise HTTPException(status_code=502, detail="Statement parsing temporarily unavailable.") from e
         status = 400 if ("expired" in msg.lower() or "invalid" in msg.lower() and "key" in msg.lower()) else 502
         raise HTTPException(status_code=status, detail=msg) from e
 

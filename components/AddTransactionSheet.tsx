@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
-import BottomSheet from '@gorhom/bottom-sheet';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -23,7 +23,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 interface AddTransactionSheetProps {
-  bottomSheetRef: React.RefObject<BottomSheet | null>;
+  bottomSheetRef: React.RefObject<BottomSheetModal | null>;
   onSubmit: (tx: Omit<Transaction, 'id'>) => void;
   editTransaction?: Transaction | null;
   onUpdate?: (tx: Transaction) => void;
@@ -94,7 +94,7 @@ export function AddTransactionSheet({ bottomSheetRef, onSubmit, editTransaction,
           merchant: data.merchant || undefined,
         });
       }
-      bottomSheetRef.current?.close();
+      bottomSheetRef.current?.dismiss();
       reset({ ...data, title: '', amountCents: '', merchant: '' });
     },
     [onSubmit, onUpdate, editTransaction, bottomSheetRef, reset]
@@ -103,12 +103,11 @@ export function AddTransactionSheet({ bottomSheetRef, onSubmit, editTransaction,
   const snapPoints = ['70%'];
 
   return (
-    <BottomSheet
+    <BottomSheetModal
       ref={bottomSheetRef}
-      index={-1}
       snapPoints={snapPoints}
       enablePanDownToClose
-      onChange={(i) => i === -1 && onClose?.()}
+      onDismiss={onClose}
       backgroundStyle={{ backgroundColor: theme.surfaceElevated ?? theme.surface }}
       handleIndicatorStyle={{ backgroundColor: theme.textTertiary }}
     >
@@ -223,7 +222,7 @@ export function AddTransactionSheet({ bottomSheetRef, onSubmit, editTransaction,
           </TouchableOpacity>
         </KeyboardAvoidingView>
       </View>
-    </BottomSheet>
+    </BottomSheetModal>
   );
 }
 

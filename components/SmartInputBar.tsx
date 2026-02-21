@@ -25,9 +25,9 @@ export type SmartInputContext = 'today' | 'items' | 'money';
 export type InputBoxStatus = null | 'thinking' | 'reminder' | 'transaction' | 'both';
 
 const PLACEHOLDERS: Record<SmartInputContext, string> = {
-  today: 'Add anything…',
-  items: 'Add anything…',
-  money: 'Add anything…',
+  today: 'Reminder or expense for today…',
+  items: 'Add a reminder…',
+  money: 'Log expense or reminder…',
 };
 
 const STATUS_LABELS: Record<Exclude<InputBoxStatus, null | 'thinking'>, string> = {

@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import type { Transaction } from '@/lib/types';
@@ -70,8 +70,11 @@ export function SwipeableTransactionRow({
     >
       <TouchableOpacity
         style={[styles.row, isFirst && styles.rowFirst, { borderTopColor: borderColor ?? metaColor }]}
-        onPress={onPress}
-        activeOpacity={0.7}
+        onPress={() => {
+          swipeableRef.current?.close();
+          onPress();
+        }}
+        activeOpacity={0.6}
       >
         <View style={styles.left}>
           <Text style={[styles.txTitle, { color: textColor }]} numberOfLines={1}>

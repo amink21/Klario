@@ -1,13 +1,23 @@
 """One-off Gemini API calls: statement parsing and daily brief. No PDF storage."""
+import base64
 import json
 import logging
+import urllib.request
+import urllib.error
 from typing import Any
 
 from google import genai
 from google.genai import types
 
-from app.config import GEMINI_API_KEY, GEMINI_MODEL, GEMINI_BRIEF_MODEL
-from app.parser.gemini_prompt import build_prompt
+from app.config import (
+    GEMINI_API_KEY,
+    GEMINI_MODEL,
+    GEMINI_BRIEF_MODEL,
+    OPENROUTER_API_KEY,
+    OPENROUTER_URL,
+    OPENROUTER_MODEL,
+)
+from app.parser.gemini_prompt import build_prompt, GEMINI_SYSTEM_INSTRUCTION
 from app.schemas import DailyBriefResponse, GeminiParseResponse
 
 logger = logging.getLogger(__name__)
@@ -15,54 +25,12 @@ logger = logging.getLogger(__name__)
 # Max size already enforced by caller (15MB)
 PDF_MIME = "application/pdf"
 
+BOTH_FAILED_MSG = "Both primary Gemini and OpenRouter fallback failed"
 
-def parse_pdf_with_gemini(pdf_bytes: bytes, timezone: str = "America/Montreal") -> GeminiParseResponse:
-    """
-    Send PDF bytes to Gemini, parse response as JSON, validate and return.
-    Raises ValueError on invalid JSON or validation errors.
-    """
-    if not GEMINI_API_KEY:
-        raise ValueError("GEMINI_API_KEY is not set")
 
-    prompt = build_prompt(timezone=timezone)
-
-    # Build content: PDF part + text part
-    blob = types.Blob(data=pdf_bytes, mime_type=PDF_MIME)
-    part_pdf = types.Part(inline_data=blob)
-    part_text = types.Part.from_text(text=prompt)
-    content = types.Content(role="user", parts=[part_pdf, part_text])
-
-    client = genai.Client(api_key=GEMINI_API_KEY)
-    try:
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=[content],
-        )
-    except Exception as e:
-        err_msg = str(e).lower()
-        if "expired" in err_msg or "renew" in err_msg:
-            raise ValueError(
-                "Gemini API key has expired. Create a new key at https://aistudio.google.com/apikey "
-                "then set GEMINI_API_KEY in Render Dashboard → Environment and redeploy."
-            ) from e
-        if "429" in err_msg or "resource_exhausted" in err_msg or "quota" in err_msg:
-            raise ValueError(
-                "Gemini quota exceeded. Wait a minute and retry, or enable billing at https://ai.google.dev/gemini-api/docs/rate-limits"
-            ) from e
-        if "404" in err_msg or "not found" in err_msg:
-            raise ValueError(
-                f"Gemini model not found. Set GEMINI_MODEL in .env to an available model (e.g. gemini-2.0-flash). See https://ai.google.dev/gemini-api/docs/models"
-            ) from e
-        if "403" in err_msg or "permission" in err_msg or "invalid" in err_msg or "401" in err_msg:
-            raise ValueError(
-                "Gemini API key invalid or not allowed. Create or check your key at https://aistudio.google.com/apikey "
-                "and set GEMINI_API_KEY in Render environment variables."
-            ) from e
-        raise ValueError(f"Gemini API error: {e}") from e
-
-    text = getattr(response, "text", None) or ""
+def _parse_response_text(text: str) -> GeminiParseResponse:
+    """Strip markdown fence, parse JSON, validate. Raises ValueError on failure."""
     text = (text or "").strip()
-    # Strip markdown code fence if present
     if text.startswith("```"):
         lines = text.split("\n")
         if lines[0].startswith("```"):
@@ -70,21 +38,91 @@ def parse_pdf_with_gemini(pdf_bytes: bytes, timezone: str = "America/Montreal") 
         if lines and lines[-1].strip() == "```":
             lines = lines[:-1]
         text = "\n".join(lines)
-
     try:
         data: dict[str, Any] = json.loads(text)
     except json.JSONDecodeError as e:
-        logger.warning("Gemini returned non-JSON response: %s", str(e)[:200])
-        raise ValueError("Gemini returned invalid JSON") from e
-
-    # Validate and coerce to our schema
+        logger.warning("Non-JSON response: %s", str(e)[:200])
+        raise ValueError("Invalid JSON") from e
     try:
-        out = GeminiParseResponse.model_validate(data)
+        return GeminiParseResponse.model_validate(data)
     except Exception as e:
-        logger.warning("Gemini response validation failed: %s", e)
-        raise ValueError(f"Gemini response validation failed: {e}") from e
+        logger.warning("Response validation failed: %s", e)
+        raise ValueError(f"Response validation failed: {e}") from e
 
-    return out
+
+def _parse_pdf_with_openrouter(pdf_bytes: bytes, timezone: str) -> GeminiParseResponse:
+    """Call OpenRouter Gemini 2.5 Flash for PDF parsing. Raises on failure."""
+    if not OPENROUTER_API_KEY:
+        raise ValueError("OPENROUTER_API_KEY is not set")
+    user_prompt = build_prompt(timezone=timezone)
+    b64 = base64.b64encode(pdf_bytes).decode("ascii")
+    data_url = f"data:application/pdf;base64,{b64}"
+    body = {
+        "model": OPENROUTER_MODEL,
+        "messages": [
+            {"role": "system", "content": GEMINI_SYSTEM_INSTRUCTION},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": user_prompt},
+                    {"type": "file", "file": {"filename": "statement.pdf", "file_data": data_url}},
+                ],
+            },
+        ],
+    }
+    req = urllib.request.Request(
+        OPENROUTER_URL,
+        data=json.dumps(body).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            out = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        raise ValueError(f"OpenRouter HTTP {e.code}: {e.reason}") from e
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        raise ValueError(f"OpenRouter request failed: {e}") from e
+    choices = out.get("choices") or []
+    if not choices:
+        raise ValueError("OpenRouter returned no choices")
+    content = (choices[0].get("message") or {}).get("content") or ""
+    return _parse_response_text(content)
+
+
+def parse_pdf_with_gemini(pdf_bytes: bytes, timezone: str = "America/Montreal") -> GeminiParseResponse:
+    """
+    Send PDF bytes to Gemini, parse response as JSON, validate and return.
+    On primary failure (429, timeout, 500, etc.), retry once via OpenRouter Gemini 2.5 Flash.
+    Raises ValueError on invalid JSON, validation errors, or if both providers fail.
+    """
+    if not GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEY is not set")
+
+    prompt = build_prompt(timezone=timezone)
+    blob = types.Blob(data=pdf_bytes, mime_type=PDF_MIME)
+    part_pdf = types.Part(inline_data=blob)
+    part_text = types.Part.from_text(text=prompt)
+    content = types.Content(role="user", parts=[part_pdf, part_text])
+
+    try:
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=[content],
+        )
+        text = getattr(response, "text", None) or ""
+        return _parse_response_text(text)
+    except Exception as primary_err:
+        logger.warning("Primary Gemini failed, using OpenRouter fallback: %s", str(primary_err)[:200])
+        try:
+            return _parse_pdf_with_openrouter(pdf_bytes, timezone)
+        except Exception as fallback_err:
+            logger.warning("OpenRouter fallback failed: %s", str(fallback_err)[:200])
+            raise ValueError(BOTH_FAILED_MSG) from fallback_err
 
 
 # Daily brief: text-only, same prompt as app
