@@ -260,8 +260,10 @@ export default function MoneyScreen() {
 
       if (isPdf) {
         if (!isGeminiImportAvailable()) {
-          setImportMessage('PDF import requires EXPO_PUBLIC_IMPORT_API_URL (backend with Gemini) in .env.');
-          setTimeout(() => setImportMessage(null), 5000);
+          setImportMessage(
+            'Set EXPO_PUBLIC_IMPORT_API_URL in the app .env (e.g. https://klario.onrender.com). Restart Expo (npx expo start -c) after changing .env. Render env vars are for the backend only.'
+          );
+          setTimeout(() => setImportMessage(null), 8000);
           return;
         }
         setPdfExtractingVisible(true);
