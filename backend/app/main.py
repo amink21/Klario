@@ -22,6 +22,7 @@ from app.config import (
     GEMINI_MODEL,
     IMPORT_API_KEY,
     MAX_UPLOAD_MB,
+    OPENROUTER_API_KEY,
     RATE_LIMIT_PER_MINUTE,
 )
 from app.gemini_client import BOTH_FAILED_MSG, generate_daily_brief, parse_pdf_with_gemini
@@ -166,9 +167,9 @@ async def parse_statement_gemini(
             detail=f"File exceeds {MAX_UPLOAD_MB}MB limit",
         )
 
-    if not GEMINI_API_KEY:
-        logger.error("[%s] GEMINI_API_KEY not set", request_id)
-        raise HTTPException(status_code=503, detail="Gemini API not configured")
+    if not OPENROUTER_API_KEY:
+        logger.error("[%s] OPENROUTER_API_KEY not set (PDF import uses OpenRouter)", request_id)
+        raise HTTPException(status_code=503, detail="OpenRouter API not configured for PDF import")
 
     try:
         result = await asyncio.to_thread(parse_pdf_with_gemini, pdf_bytes, timezone)

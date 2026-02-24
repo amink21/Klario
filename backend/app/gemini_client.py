@@ -95,34 +95,32 @@ def _parse_pdf_with_openrouter(pdf_bytes: bytes, timezone: str) -> GeminiParseRe
 
 def parse_pdf_with_gemini(pdf_bytes: bytes, timezone: str = "America/Montreal") -> GeminiParseResponse:
     """
-    Send PDF bytes to Gemini, parse response as JSON, validate and return.
-    On primary failure (429, timeout, 500, etc.), retry once via OpenRouter Gemini 2.5 Flash.
-    Raises ValueError on invalid JSON, validation errors, or if both providers fail.
+    Send PDF bytes to OpenRouter (Gemini 2.5 Flash), parse response as JSON, validate and return.
+    Raises ValueError on missing OPENROUTER_API_KEY, invalid JSON, or validation errors.
     """
-    if not GEMINI_API_KEY:
-        raise ValueError("GEMINI_API_KEY is not set")
-
-    prompt = build_prompt(timezone=timezone)
-    blob = types.Blob(data=pdf_bytes, mime_type=PDF_MIME)
-    part_pdf = types.Part(inline_data=blob)
-    part_text = types.Part.from_text(text=prompt)
-    content = types.Content(role="user", parts=[part_pdf, part_text])
-
-    try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=[content],
-        )
-        text = getattr(response, "text", None) or ""
-        return _parse_response_text(text)
-    except Exception as primary_err:
-        logger.warning("Primary Gemini failed, using OpenRouter fallback: %s", str(primary_err)[:200])
-        try:
-            return _parse_pdf_with_openrouter(pdf_bytes, timezone)
-        except Exception as fallback_err:
-            logger.warning("OpenRouter fallback failed: %s", str(fallback_err)[:200])
-            raise ValueError(BOTH_FAILED_MSG) from fallback_err
+    # PDF parsing: OpenRouter only (direct Gemini commented out to avoid quota/billing issues)
+    # if not GEMINI_API_KEY:
+    #     raise ValueError("GEMINI_API_KEY is not set")
+    # prompt = build_prompt(timezone=timezone)
+    # blob = types.Blob(data=pdf_bytes, mime_type=PDF_MIME)
+    # part_pdf = types.Part(inline_data=blob)
+    # part_text = types.Part.from_text(text=prompt)
+    # content = types.Content(role="user", parts=[part_pdf, part_text])
+    # try:
+    #     client = genai.Client(api_key=GEMINI_API_KEY)
+    #     response = client.models.generate_content(
+    #         model=GEMINI_MODEL,
+    #         contents=[content],
+    #     )
+    #     text = getattr(response, "text", None) or ""
+    #     return _parse_response_text(text)
+    # except Exception as primary_err:
+    #     logger.warning("Primary Gemini failed, using OpenRouter fallback: %s", str(primary_err)[:200])
+    #     try:
+    #         return _parse_pdf_with_openrouter(pdf_bytes, timezone)
+    #     except Exception as fallback_err:
+    #         ...
+    return _parse_pdf_with_openrouter(pdf_bytes, timezone)
 
 
 # Daily brief: text-only, same prompt as app
