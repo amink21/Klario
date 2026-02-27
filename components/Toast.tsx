@@ -33,7 +33,7 @@ export function Toast({ message, onDismiss, durationMs = 2500 }: ToastProps) {
 const styles = StyleSheet.create({
   wrapper: {
     position: 'absolute',
-    top: spacing.lg,
+    top: spacing.xxl + spacing.lg,
     left: spacing.lg,
     right: spacing.lg,
     paddingVertical: spacing.md,

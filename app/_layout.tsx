@@ -172,6 +172,8 @@ function RootLayoutNav() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="transaction/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />
+          <Stack.Screen name="quick-add" options={{ headerShown: false }} />
+          <Stack.Screen name="quick-add-setup" options={{ headerShown: false }} />
         </Stack>
         <MorningBriefModal />
       </ThemeProvider>

@@ -53,6 +53,12 @@ export interface SettingsState {
   smartNudges?: boolean;
   /** One-time demo seed flag (Supabase settings when wired). */
   hasSeeded?: boolean;
+  /** Quick Add (Back Tap): enable the flow. */
+  quickAddEnabled?: boolean;
+  /** User confirmed they installed the Shortcut. */
+  quickAddShortcutInstalledConfirmed?: boolean;
+  /** User confirmed they set up Back Tap. */
+  quickAddBackTapConfiguredConfirmed?: boolean;
 }
 
 export type LifeStatus = 'Stable' | 'Watch' | 'Action Needed';

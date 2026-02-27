@@ -24,7 +24,22 @@ const KEYS = {
   SUBSCRIPTIONS: 'subscriptions',
   SETTINGS: 'settings',
   HAS_SEEDED: 'has_seeded',
+  QUICK_ADD_SETTINGS: 'quick_add_settings',
 } as const;
+
+const QUICK_ADD_KEYS: (keyof SettingsState)[] = [
+  'quickAddEnabled',
+  'quickAddShortcutInstalledConfirmed',
+  'quickAddBackTapConfiguredConfirmed',
+];
+
+function pickQuickAdd(s: SettingsState): Partial<SettingsState> {
+  const out: Partial<SettingsState> = {};
+  for (const k of QUICK_ADD_KEYS) {
+    if (s[k] !== undefined) (out as Record<string, unknown>)[k] = s[k];
+  }
+  return out;
+}
 
 /** When Supabase is configured, all data goes through Supabase. */
 function useSupabase(): boolean {
@@ -226,12 +241,22 @@ export const DEFAULT_SETTINGS: SettingsState = {
   dueItemReminders: true,
   defaultRemindDaysBefore: 1,
   smartNudges: true,
+  quickAddEnabled: false,
+  quickAddShortcutInstalledConfirmed: false,
+  quickAddBackTapConfiguredConfirmed: false,
 };
 
 export async function getSettings(): Promise<SettingsState> {
   if (await useSupabaseAuth()) {
     const remote = await sbFetchSettings();
-    return remote ?? DEFAULT_SETTINGS;
+    const base = remote ?? DEFAULT_SETTINGS;
+    try {
+      const qaJson = await AsyncStorage.getItem(KEYS.QUICK_ADD_SETTINGS);
+      const qa = qaJson ? (JSON.parse(qaJson) as Partial<SettingsState>) : {};
+      return { ...base, ...qa };
+    } catch {
+      return base;
+    }
   }
   await loadAll();
   return cache.settings ?? DEFAULT_SETTINGS;
@@ -239,6 +264,7 @@ export async function getSettings(): Promise<SettingsState> {
 
 export async function setSettings(settings: SettingsState): Promise<void> {
   if (await useSupabaseAuth()) {
+    await AsyncStorage.setItem(KEYS.QUICK_ADD_SETTINGS, JSON.stringify(pickQuickAdd(settings)));
     await sbUpsertSettings(settings);
     return;
   }

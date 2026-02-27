@@ -7,5 +7,8 @@ export function defaultSettings(): SettingsState {
     dueItemReminders: true,
     defaultRemindDaysBefore: 1,
     smartNudges: true,
+    quickAddEnabled: false,
+    quickAddShortcutInstalledConfirmed: false,
+    quickAddBackTapConfiguredConfirmed: false,
   };
 }
