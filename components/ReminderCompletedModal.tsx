@@ -33,7 +33,7 @@ export function ReminderCompletedModal() {
   const [loading, setLoading] = useState(false);
   const [pushedMessage, setPushedMessage] = useState<string | null>(null);
 
-  const item = itemId ? items.find((i) => i.id === itemId) ?? null;
+  const item = itemId ? (items.find((i) => i.id === itemId) ?? null) : null;
   const visible = Boolean(itemId);
 
   // Clear id if item was deleted
@@ -94,7 +94,7 @@ export function ReminderCompletedModal() {
       );
       await setItems(updated);
 
-      const label = CADENCE_NEXT_LABEL[item.cadence];
+      const label = CADENCE_NEXT_LABEL[item.cadence as keyof typeof CADENCE_NEXT_LABEL];
       setPushedMessage(`It will now be pushed to ${label}.`);
     } finally {
       setLoading(false);
@@ -127,7 +127,7 @@ export function ReminderCompletedModal() {
               </Text>
               {isRecurring && (
                 <Text style={[styles.hint, { color: theme.textTertiary }]}>
-                  It will be moved to {CADENCE_NEXT_LABEL[item.cadence]} when you mark complete.
+                  It will be moved to {CADENCE_NEXT_LABEL[item.cadence as keyof typeof CADENCE_NEXT_LABEL]} when you mark complete.
                 </Text>
               )}
               <View style={styles.actions}>
