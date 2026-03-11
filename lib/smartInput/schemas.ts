@@ -8,7 +8,7 @@ export {
   SMART_INPUT_CATEGORIES,
 } from '@/lib/ai/schemas';
 
-const cadenceSchema = z.enum(['one_time', 'daily', 'monthly', 'yearly']);
+const cadenceSchema = z.enum(['one_time', 'daily', 'weekly', 'monthly', 'yearly']);
 
 /** Local parse reminder shape (partial + optional dates) */
 export const localReminderSchema = z.object({

@@ -15,6 +15,8 @@ const PURCHASE_KEYWORDS =
 
 /** Cadence: daily */
 const CADENCE_DAILY = /\b(daily|every day|each day|per day)\b/i;
+/** Cadence: weekly */
+const CADENCE_WEEKLY = /\b(weekly|every week|per week|each week|week)\b/i;
 /** Cadence: monthly */
 const CADENCE_MONTHLY = /\b(monthly|every month|per month|each month|month)\b/i;
 /** Cadence: yearly */
@@ -101,9 +103,13 @@ function hasCadenceMonthly(text: string): boolean {
 function hasCadenceYearly(text: string): boolean {
   return CADENCE_YEARLY.test(text);
 }
-function getCadence(text: string): 'one_time' | 'daily' | 'monthly' | 'yearly' | null {
+function hasCadenceWeekly(text: string): boolean {
+  return CADENCE_WEEKLY.test(text);
+}
+function getCadence(text: string): 'one_time' | 'daily' | 'weekly' | 'monthly' | 'yearly' | null {
   if (hasCadenceYearly(text)) return 'yearly';
   if (hasCadenceMonthly(text)) return 'monthly';
+  if (hasCadenceWeekly(text)) return 'weekly';
   if (hasCadenceDaily(text)) return 'daily';
   return null;
 }
@@ -228,7 +234,7 @@ export function localToSmartResult(local: LocalParseResult, nowISO: string): Sma
           category: local.reminder.category,
           nextDueISO: local.reminder.nextDueISO ?? null,
           dueTime: local.reminder.dueTime ?? null,
-          cadence: (local.reminder.cadence ?? 'one_time') as 'one_time' | 'daily' | 'monthly' | 'yearly',
+          cadence: (local.reminder.cadence ?? 'one_time') as 'one_time' | 'daily' | 'weekly' | 'monthly' | 'yearly',
           remindDaysBefore: local.reminder.remindDaysBefore ?? DEFAULT_REMIND_DAYS_BEFORE,
           remindMinutesBefore: local.reminder.remindMinutesBefore ?? null,
         }
@@ -240,7 +246,7 @@ export function localToSmartResult(local: LocalParseResult, nowISO: string): Sma
           category: local.spending.category,
           amountCents: local.spending.amountCents ?? null,
           dateISO: local.spending.dateISO ?? nowISO,
-          cadence: (local.spending.cadence ?? 'one_time') as 'one_time' | 'daily' | 'monthly' | 'yearly' | null,
+          cadence: (local.spending.cadence ?? 'one_time') as 'one_time' | 'daily' | 'weekly' | 'monthly' | 'yearly' | null,
         }
       : null;
   return {

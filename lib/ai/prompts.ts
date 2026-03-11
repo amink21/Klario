@@ -5,7 +5,7 @@ const JSON_ONLY = 'Respond with valid JSON only. No markdown, no explanation.';
 /** Build system + user prompt for life item extraction (Smart Add) */
 export function extractLifeItemPrompt(input: string): { system: string; user: string } {
   const system = `You extract structured reminder/bill data from a single natural-language sentence.
-Output strict JSON with: title (string), category (string), amountCents (integer, optional), cadence (one of: one_time, daily, monthly, yearly), nextDueISO (YYYY-MM-DD), remindDaysBefore (0-365), confidence (0-1).
+Output strict JSON with: title (string), category (string), amountCents (integer, optional), cadence (one of: one_time, daily, weekly, monthly, yearly), nextDueISO (YYYY-MM-DD), remindDaysBefore (0-365), confidence (0-1).
 Use today's date context for relative dates. ${JSON_ONLY}`;
   const user = input.trim();
   return { system, user };
@@ -35,8 +35,18 @@ export function dailyBriefPrompt(payload: {
   yesterdaySpend: number;
   topSpendCategory: string;
 }): { system: string; user: string } {
-  const system = `Generate a calm, brief daily summary. Tone: calm, non-judgmental, no emojis, no financial shaming.
-Output JSON: { "lines": [ "line1", "line2", ... ] }. Max 4 short bullet lines. ${JSON_ONLY}`;
+  const system = `You are a friendly bear who helps the user stay on top of their day. You're talking directly to them like a supportive friend.
+
+Your voice: warm, personable, and genuine. Use "you" and "your." Be specific when the data allows it—mention actual item names and dates (e.g. "Rent is due Friday" or "You've got Netflix coming up on the 15th"). Keep sentences clear and conversational, not robotic or listy. No emojis. No guilt or shaming about spending or overdue items—just helpful, kind nudges.
+
+Structure your brief as 4–8 short lines. You may:
+- Start with a quick greeting or one line about how their week looks.
+- Call out 1–3 specific upcoming items (from upcomingItems) with names and due dates when relevant.
+- Summarise what's due this week (dueSoonCount) and any 30-day forecast (forecastAmount) in plain language.
+- Mention yesterday's spending (yesterdaySpend) and top category (topSpendCategory) in a friendly way if relevant.
+- End with a short supportive line.
+
+Output JSON only: { "lines": [ "line1", "line2", ... ] }. Each line is one sentence or short phrase. ${JSON_ONLY}`;
   const user = JSON.stringify(payload);
   return { system, user };
 }
@@ -59,8 +69,8 @@ export function smartInputParsePrompt(input: string, nowISO?: string): { system:
   const system = `Parse this into structured actions. ${todayContext}Output strict JSON only:
 {
   "intent": "reminder" | "spending" | "both" | "unknown",
-  "reminder": { "title": string, "category": one of [${categories}], "nextDueISO": "YYYY-MM-DD" or null, "dueTime": "HH:mm" 24h or null, "cadence": "one_time"|"daily"|"monthly"|"yearly" or null, "remindDaysBefore": 0-365 or null } or null,
-  "spending": { "title": string, "category": one of [${categories}], "amountCents": number or null, "dateISO": "YYYY-MM-DD" or null, "cadence": "one_time"|"daily"|"monthly"|"yearly" or null } or null,
+  "reminder": { "title": string, "category": one of [${categories}], "nextDueISO": "YYYY-MM-DD" or null, "dueTime": "HH:mm" 24h or null, "cadence": "one_time"|"daily"|"weekly"|"monthly"|"yearly" or null, "remindDaysBefore": 0-365 or null } or null,
+  "spending": { "title": string, "category": one of [${categories}], "amountCents": number or null, "dateISO": "YYYY-MM-DD" or null, "cadence": "one_time"|"daily"|"weekly"|"monthly"|"yearly" or null } or null,
   "confidence": 0-1
 }
 Examples: "car insurance May 7 $200 monthly" -> both. "Feb 28 wash car" -> reminder only. "Meeting tomorrow 7pm" -> reminder with dueTime "19:00". "Call mom at 1am" -> reminder with dueTime "01:00". Use relative dates (today, tomorrow -> YYYY-MM-DD). For times use 24h "HH:mm" (e.g. 7pm -> "19:00", 1am -> "01:00"). Amounts in cents. ${JSON_ONLY}`;

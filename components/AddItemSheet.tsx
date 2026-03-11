@@ -14,7 +14,7 @@ const schema = z.object({
   title: z.string().min(1, 'Title required'),
   category: z.string().min(1, 'Category required'),
   amountCents: z.union([z.string(), z.number()]).optional(),
-  cadence: z.enum(['one_time', 'daily', 'monthly', 'yearly']),
+  cadence: z.enum(['one_time', 'daily', 'weekly', 'monthly', 'yearly']),
   nextDueISO: z.string().min(1, 'Due date required'),
   dueTime: z.string().optional(),
   remindDaysBefore: z.number().min(0).max(365),
@@ -221,7 +221,7 @@ export function AddItemSheet({ bottomSheetRef, onSubmit, editItem, onUpdate, ini
               <View style={styles.field}>
                 <Text style={[styles.label, { color: theme.textSecondary }]}>Cadence</Text>
                 <View style={styles.pills}>
-                  {(['one_time', 'daily', 'monthly', 'yearly'] as const).map((c) => (
+                  {(['one_time', 'daily', 'weekly', 'monthly', 'yearly'] as const).map((c) => (
                     <TouchableOpacity
                       key={c}
                       style={[

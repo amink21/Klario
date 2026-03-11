@@ -4,9 +4,9 @@
 
 import { Linking, Platform } from "react-native";
 
-/** Placeholder: replace with your iCloud Shortcuts share link. */
+/** iCloud Shortcuts share link for Quick Add (Back Tap). */
 export const SHORTCUT_INSTALL_URL =
-  "https://www.icloud.com/shortcuts/288e35020e1945ec9f17592f1344e74c";
+  "https://www.icloud.com/shortcuts/3b8ff449a7474e44b98c865374dd9079";
 
 const TEST_DEEP_LINK_TEXT = "coffee today $5";
 const TEST_DEEP_LINK = `klario://quick-add?text=${encodeURIComponent(TEST_DEEP_LINK_TEXT)}`;

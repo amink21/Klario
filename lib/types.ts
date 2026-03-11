@@ -1,4 +1,4 @@
-export type Cadence = 'one_time' | 'daily' | 'monthly' | 'yearly';
+export type Cadence = 'one_time' | 'daily' | 'weekly' | 'monthly' | 'yearly';
 export type LifeItemStatus = 'active' | 'cancelled' | 'completed';
 
 export interface LifeItem {

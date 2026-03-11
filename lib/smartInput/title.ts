@@ -39,7 +39,7 @@ export function normalizeTitle(
     .replace(/\bUSD\s*[\d,.\s]+/gi, '')
     .replace(/\b[\d,.\s]+\s*dollars?\b/gi, '')
     .replace(/\b[\d]+\s*cents?\b/gi, '')
-    .replace(/\b(daily|every day|each day|per day|monthly|yearly|every month|per month|annually|each year)\b/gi, ' ')
+    .replace(/\b(daily|every day|each day|per day|weekly|every week|per week|each week|monthly|yearly|every month|per month|annually|each year)\b/gi, ' ')
     .replace(/\b(today|tomorrow)\b/gi, ' ')
     .replace(/\bremind\s+\d+\s*(?:mins?|minutes?)\s*before\b/gi, ' ')
     .replace(/\b(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)\b/gi, ' ')
@@ -73,7 +73,7 @@ export function normalizeTitleSimple(text: string): string {
     .replace(/\b(please|pay for|add|remember|schedule|set reminder)\b/gi, ' ')
     .replace(/\b(today|tomorrow)\b/gi, ' ')
     .replace(/\b(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)\b/gi, ' ')
-    .replace(/\b(daily|every day|each day|per day|monthly|yearly|every month|per month|annually|each year)\b/gi, ' ')
+    .replace(/\b(daily|every day|each day|per day|weekly|every week|per week|each week|monthly|yearly|every month|per month|annually|each year)\b/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   return toTitleCase(out || cleanTitleRaw(text));

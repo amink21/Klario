@@ -3,7 +3,7 @@
  * NO AI. Pure regex.
  */
 
-export type Cadence = 'one_time' | 'daily' | 'monthly' | 'yearly';
+export type Cadence = 'one_time' | 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 const DAILY_PATTERNS = [
   /\bdaily\b/i,
@@ -11,6 +11,15 @@ const DAILY_PATTERNS = [
   /\beach\s+day\b/i,
   /\bper\s+day\b/i,
   /\bday\s*\/\s*day\b/i,
+];
+
+const WEEKLY_PATTERNS = [
+  /\bweekly\b/i,
+  /\bevery\s+week\b/i,
+  /\bper\s+week\b/i,
+  /\beach\s+week\b/i,
+  /\b\/?\s*wk\.?\s*$/i,
+  /\b\/\s*week\b/i,
 ];
 
 const MONTHLY_PATTERNS = [
@@ -53,6 +62,10 @@ export function detectCadence(text: string): Cadence | null {
 
   for (const re of DAILY_PATTERNS) {
     if (re.test(t)) return 'daily';
+  }
+
+  for (const re of WEEKLY_PATTERNS) {
+    if (re.test(t)) return 'weekly';
   }
 
   for (const re of MONTHLY_PATTERNS) {

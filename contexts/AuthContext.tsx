@@ -17,7 +17,6 @@ type AuthContextType = {
   signInWithPassword: (email: string, password: string) => Promise<{ error?: Error }>;
   signUp: (email: string, password: string) => Promise<{ error?: Error }>;
   signOut: () => Promise<void>;
-  signInWithOAuth: (provider: 'google') => Promise<{ error?: Error }>;
   signInWithAppleNative: () => Promise<{ error?: Error }>;
 };
 
@@ -69,11 +68,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error ?? undefined };
   }, []);
 
-  const signInWithOAuth = useCallback(async (provider: 'google' | 'apple') => {
-    const { signInWithOAuthProvider } = await import('@/lib/auth-helpers');
-    return signInWithOAuthProvider(provider);
-  }, []);
-
   const signInWithAppleNative = useCallback(async () => {
     const { signInWithAppleNative: doSignIn } = await import('@/lib/appleAuth');
     const result = await doSignIn();
@@ -90,7 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInWithPassword,
     signUp,
     signOut,
-    signInWithOAuth,
     signInWithAppleNative,
   };
 

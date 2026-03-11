@@ -28,6 +28,7 @@ import {
 import { updateMorningBriefSchedule } from '@/lib/notifications';
 import { runNudgeScheduler } from '@/lib/nudges';
 import { MorningBriefModal } from '@/components/MorningBriefModal';
+import { ReminderCompletedModal } from '@/components/ReminderCompletedModal';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -98,6 +99,7 @@ function RootLayoutNav() {
   const settings = useStore((s) => s.settings);
   const setShowMorningBriefModal = useStore((s) => s.setShowMorningBriefModal);
   const setDeepLinkItemId = useStore((s) => s.setDeepLinkItemId);
+  const setReminderNotificationItemId = useStore((s) => s.setReminderNotificationItemId);
 
   useEffect(() => {
     (async () => {
@@ -146,7 +148,7 @@ function RootLayoutNav() {
       }
 
       if (data.type === 'due_reminder' && data.itemId) {
-        setDeepLinkItemId(data.itemId);
+        setReminderNotificationItemId(data.itemId);
         return;
       }
 
@@ -163,7 +165,7 @@ function RootLayoutNav() {
     });
 
     return () => sub.remove();
-  }, [loaded, router, setShowMorningBriefModal, setDeepLinkItemId]);
+  }, [loaded, router, setShowMorningBriefModal, setDeepLinkItemId, setReminderNotificationItemId]);
 
   return (
     <BottomSheetModalProvider>
@@ -176,6 +178,7 @@ function RootLayoutNav() {
           <Stack.Screen name="quick-add-setup" options={{ headerShown: false }} />
         </Stack>
         <MorningBriefModal />
+        <ReminderCompletedModal />
       </ThemeProvider>
     </BottomSheetModalProvider>
   );

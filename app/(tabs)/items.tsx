@@ -28,7 +28,7 @@ import { cancelScheduledNotification, scheduleDueReminder } from '@/lib/notifica
 import { handleSmartInput } from '@/lib/smartInput/handleSmartInput';
 import { executeSmartActions } from '@/lib/smartInput/executeSmartActions';
 
-type Filter = 'all' | 'today' | 'overdue' | 'due_soon' | 'daily' | 'monthly' | 'yearly' | 'cancelled' | 'completed';
+type Filter = 'all' | 'today' | 'overdue' | 'due_soon' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'cancelled' | 'completed';
 
 export default function ItemsScreen() {
   const colorScheme = useColorScheme();
@@ -83,6 +83,9 @@ export default function ItemsScreen() {
         break;
       case 'daily':
         list = active.filter((i) => i.cadence === 'daily');
+        break;
+      case 'weekly':
+        list = active.filter((i) => i.cadence === 'weekly');
         break;
       case 'monthly':
         list = active.filter((i) => i.cadence === 'monthly');
@@ -307,6 +310,7 @@ export default function ItemsScreen() {
     { key: 'overdue', label: 'Overdue' },
     { key: 'due_soon', label: '14 days' },
     { key: 'daily', label: 'Daily' },
+    { key: 'weekly', label: 'Weekly' },
     { key: 'monthly', label: 'Monthly' },
     { key: 'yearly', label: 'Yearly' },
     { key: 'completed', label: 'Completed' },

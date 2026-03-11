@@ -1,4 +1,3 @@
-import { GoogleLogo } from "@/components/GoogleLogo";
 import { useColorScheme } from "@/components/useColorScheme";
 import { colors, radius, spacing } from "@/constants/Theme";
 import { useAuth } from "@/contexts/AuthContext";
@@ -120,7 +119,6 @@ export default function SettingsScreen() {
     session,
     signInWithPassword,
     signUp,
-    signInWithOAuth,
     signInWithAppleNative,
     signOut,
   } = useAuth();
@@ -172,15 +170,6 @@ export default function SettingsScreen() {
     setAuthLoading(true);
     setAuthError(null);
     const { error } = await signInWithPassword(authEmail.trim(), authPassword);
-    setAuthLoading(false);
-    if (error) setAuthError(error.message);
-    else await load();
-  };
-
-  const handleOAuthGoogle = async () => {
-    setAuthLoading(true);
-    setAuthError(null);
-    const { error } = await signInWithOAuth("google");
     setAuthLoading(false);
     if (error) setAuthError(error.message);
     else await load();
@@ -510,60 +499,36 @@ export default function SettingsScreen() {
               >
                 Sign in to sync your data to the cloud.
               </Text>
-              <View style={styles.authBtnRow}>
-                <TouchableOpacity
-                  style={[styles.googleBtn]}
-                  onPress={handleOAuthGoogle}
-                  disabled={authLoading}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.googleBtnIcon}>
-                    <GoogleLogo size={15} />
-                  </View>
-                  <Text style={styles.googleBtnText} numberOfLines={1}>
-                    {authLoading ? "…" : "Sign in with Google"}
-                  </Text>
-                </TouchableOpacity>
-                {appleAuthAvailable && appleAuthModule != null ? (
-                  (() => {
-                    const AppleBtn = appleAuthModule.AppleAuthenticationButton;
-                    return (
-                      <View style={styles.authBtnRowApple}>
-                        <AppleBtn
-                          buttonType={
-                            appleAuthModule.AppleAuthenticationButtonType
-                              .SIGN_IN
-                          }
-                          buttonStyle={
-                            appleAuthModule.AppleAuthenticationButtonStyle.BLACK
-                          }
-                          cornerRadius={8}
-                          style={{ width: "100%", height: 44 }}
-                          onPress={handleAppleNative}
-                        />
-                      </View>
-                    );
-                  })()
-                ) : Platform.OS === "ios" ? (
-                  <TouchableOpacity
-                    style={[
-                      styles.authBtn,
-                      styles.authBtnRowApple,
-                      {
-                        backgroundColor: theme.pillBg,
-                        height: 44,
-                        justifyContent: "center",
-                      },
-                    ]}
-                    onPress={handleAppleNative}
-                    disabled={authLoading}
-                  >
-                    <Text style={[styles.authBtnText, { color: theme.text }]}>
-                      Apple
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
+              {(appleAuthAvailable && appleAuthModule != null) || Platform.OS === "ios" ? (
+                <View style={styles.authBtnRow}>
+                  {appleAuthAvailable && appleAuthModule != null ? (
+                    (() => {
+                      const AppleBtn = appleAuthModule!.AppleAuthenticationButton;
+                      return (
+                        <View style={styles.appleBtnWrap}>
+                          <AppleBtn
+                            buttonType={appleAuthModule!.AppleAuthenticationButtonType.SIGN_IN}
+                            buttonStyle={appleAuthModule!.AppleAuthenticationButtonStyle.BLACK}
+                            cornerRadius={8}
+                            style={{ width: "100%", height: 44 }}
+                            onPress={handleAppleNative}
+                          />
+                        </View>
+                      );
+                    })()
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.authBtn, styles.appleBtnWrap]}
+                      onPress={handleAppleNative}
+                      disabled={authLoading}
+                    >
+                      <Text style={[styles.authBtnText, { color: theme.text }]}>
+                        Sign in with Apple
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ) : null}
               <View
                 style={[
                   styles.settingRow,
@@ -1357,26 +1322,9 @@ const styles = StyleSheet.create({
   },
   authBtnText: { color: "#fff", fontSize: 15, fontWeight: "600" },
   authBtnRow: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    gap: spacing.sm,
     marginTop: spacing.md,
   },
-  authBtnRowApple: { flex: 1, flexBasis: 0, minWidth: 0 },
-  googleBtn: {
-    flex: 1,
-    flexBasis: 0,
-    minWidth: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    height: 44,
-    paddingHorizontal: spacing.md,
-    borderRadius: 8,
-    backgroundColor: "#000",
-  },
-  googleBtnIcon: { marginRight: spacing.sm },
-  googleBtnText: { color: "#fff", fontSize: 14, fontWeight: "500" },
+  appleBtnWrap: { width: "100%" },
   modalContainer: { flex: 1, paddingTop: spacing.xxl },
   modalHeader: {
     flexDirection: "row",

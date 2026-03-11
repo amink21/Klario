@@ -15,7 +15,7 @@ export const TRANSACTION_CATEGORIES = [
 
 export type TransactionCategory = (typeof TRANSACTION_CATEGORIES)[number];
 
-const cadenceSchema = z.enum(['one_time', 'daily', 'monthly', 'yearly']);
+const cadenceSchema = z.enum(['one_time', 'daily', 'weekly', 'monthly', 'yearly']);
 const subscriptionCadenceSchema = z.enum(['monthly', 'yearly']);
 
 /** AI output for life item extraction (Smart Add) */
@@ -41,7 +41,7 @@ export type TransactionCategoryResult = z.infer<typeof transactionCategorySchema
 
 /** AI output for daily brief */
 export const dailyBriefSchema = z.object({
-  lines: z.array(z.string()).max(4).min(1),
+  lines: z.array(z.string()).max(10).min(1),
 });
 
 export type DailyBriefResult = z.infer<typeof dailyBriefSchema>;
@@ -76,7 +76,7 @@ const smartInputReminderSchema = z.object({
   category: z.enum(SMART_INPUT_CATEGORIES),
   nextDueISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
   dueTime: timeHHMMSchema,
-  cadence: z.enum(['one_time', 'daily', 'monthly', 'yearly']).nullable(),
+  cadence: z.enum(['one_time', 'daily', 'weekly', 'monthly', 'yearly']).nullable(),
   remindDaysBefore: z.number().int().min(0).max(365).nullable(),
   remindMinutesBefore: z.number().int().min(1).max(1440).nullable().optional(),
 });
@@ -86,7 +86,7 @@ const smartInputSpendingSchema = z.object({
   category: z.enum(SMART_INPUT_CATEGORIES),
   amountCents: z.number().int().nonnegative().nullable(),
   dateISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
-  cadence: z.enum(['one_time', 'daily', 'monthly', 'yearly']).nullable(),
+  cadence: z.enum(['one_time', 'daily', 'weekly', 'monthly', 'yearly']).nullable(),
 });
 
 /** AI output for Smart Input parse */

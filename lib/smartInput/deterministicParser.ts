@@ -55,6 +55,13 @@ function tomorrowISO(now: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Same weekday next week (YYYY-MM-DD). */
+function nextWeekISO(now: Date): string {
+  const d = new Date(now);
+  d.setDate(d.getDate() + 7);
+  return d.toISOString().slice(0, 10);
+}
+
 /** Get first of next month (YYYY-MM-DD). */
 function firstOfNextMonth(now: Date): string {
   const d = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -181,6 +188,9 @@ export function parseSmartInput(
     if (cadence === 'daily') {
       nextDueISO = tomorrowISO(now);
       reasons.push('recurring_no_date_use_tomorrow');
+    } else if (cadence === 'weekly') {
+      nextDueISO = nextWeekISO(now);
+      reasons.push('recurring_no_date_use_next_week');
     } else if (cadence === 'monthly') {
       nextDueISO = firstOfNextMonth(now);
       reasons.push('recurring_no_date_use_first_of_month');

@@ -127,10 +127,12 @@ export function tomorrowISO(): string {
 /**
  * Add cadence to a date and return next due ISO.
  */
-export function addCadenceToDate(iso: string, cadence: 'one_time' | 'daily' | 'monthly' | 'yearly'): string {
+export function addCadenceToDate(iso: string, cadence: 'one_time' | 'daily' | 'weekly' | 'monthly' | 'yearly'): string {
   const d = iso.length === 10 ? parseDateOnlyLocal(iso) : new Date(iso);
   if (cadence === 'daily') {
     d.setDate(d.getDate() + 1);
+  } else if (cadence === 'weekly') {
+    d.setDate(d.getDate() + 7);
   } else if (cadence === 'monthly') {
     d.setMonth(d.getMonth() + 1);
   } else if (cadence === 'yearly') {
