@@ -5,6 +5,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import type { Transaction } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency';
 import { spacing } from '@/constants/Theme';
+import { MerchantIcon } from '@/components/MerchantIcon';
 
 const DELETE_WIDTH = 72;
 
@@ -76,6 +77,11 @@ export function SwipeableTransactionRow({
         }}
         activeOpacity={0.6}
       >
+        <MerchantIcon
+          merchantName={transaction.merchant ?? transaction.title}
+          category={transaction.category}
+          size={36}
+        />
         <View style={styles.left}>
           <Text style={[styles.txTitle, { color: textColor }]} numberOfLines={1}>
             {transaction.title}
@@ -102,7 +108,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   rowFirst: { borderTopWidth: 0 },
-  left: { flex: 1, marginRight: spacing.md },
+  left: { flex: 1, marginRight: spacing.md, marginLeft: spacing.sm },
   txTitle: { fontSize: 16, fontWeight: '500', marginBottom: 2 },
   txMeta: { fontSize: 13 },
   txAmount: { fontSize: 16, fontWeight: '600' },
