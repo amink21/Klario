@@ -67,14 +67,16 @@ export default function RootLayout() {
   if (hasOnboarded === false) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <OnboardingScreen
-          onComplete={() => {
-            setHasOnboarded().then(() => {
-              setHasOnboardedState(true);
-              setStartupDone(true);
-            });
-          }}
-        />
+        <AuthProvider>
+          <OnboardingScreen
+            onComplete={() => {
+              setHasOnboarded().then(() => {
+                setHasOnboardedState(true);
+                setStartupDone(true);
+              });
+            }}
+          />
+        </AuthProvider>
       </GestureHandlerRootView>
     );
   }
