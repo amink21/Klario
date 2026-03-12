@@ -364,11 +364,10 @@ export default function MoneyScreen() {
   const subscriptionMonthlyCents = subscriptions.reduce((sum, s) => {
     return sum + (s.cadence === 'yearly' ? Math.round(s.amountCents / 12) : s.amountCents);
   }, 0);
-  const breakdownRows: { category: string; amountCents: number }[] = [
-    ...spendingByCategory,
-    ...(subscriptionMonthlyCents > 0 && subscriptions.length > 0 ? [{ category: 'Subscriptions', amountCents: subscriptionMonthlyCents }] : []),
-  ].sort((a, b) => b.amountCents - a.amountCents);
+  // Breakdown is only from transactions in the selected month (no synthetic Subscriptions row).
+  const breakdownRows: { category: string; amountCents: number }[] = [...spendingByCategory];
   const [expandedCategory, setExpandedCategory] = React.useState<string | null>(null);
+  const [recentExpanded, setRecentExpanded] = React.useState(true);
   const sortedByDateAll = [...transactions].sort((a, b) => b.dateISO.localeCompare(a.dateISO));
   const recentTx = sortedByDateAll.slice(0, 6);
   const sortedByDateInSelectedMonth = useMemo(
@@ -405,6 +404,30 @@ export default function MoneyScreen() {
   const vsLastMonth =
     lastMonthSpend > 0
       ? Math.round(((monthToDateSpend - lastMonthSpend) / lastMonthSpend) * 100)
+      : null;
+
+  const avgTransactionCents =
+    monthTransactions.length > 0 ? Math.round(monthToDateSpend / monthTransactions.length) : 0;
+  const categoryCount = breakdownRows.length;
+  const projectedMonthEndCents =
+    daysElapsed > 0 ? Math.round((monthToDateSpend / daysElapsed) * daysInSelectedMonth) : 0;
+  const mostTxCategory = (() => {
+    let maxCount = 0;
+    let cat: string | null = null;
+    Object.entries(transactionsByCategory).forEach(([c, txs]) => {
+      if (txs.length > maxCount) {
+        maxCount = txs.length;
+        cat = c;
+      }
+    });
+    return cat ? { category: cat, count: maxCount } : null;
+  })();
+  const smallestTx =
+    monthTransactions.length > 0
+      ? monthTransactions.reduce<typeof monthTransactions[0] | null>((min, t) => {
+          if (t.amountCents <= 0) return min;
+          return min === null || t.amountCents < min.amountCents ? t : min;
+        }, null)
       : null;
 
   const goPrevMonth = () => {
@@ -503,36 +526,47 @@ export default function MoneyScreen() {
           )}
         </View>
 
-        <Text style={[styles.sectionLabel, styles.sectionLabelTop, { color: theme.textSecondary }]}>Recent</Text>
-        <View style={[styles.card, { backgroundColor: theme.surface }]}>
-          {recentTx.length === 0 ? (
-            <Text style={[styles.empty, { color: theme.textTertiary }]}>No transactions yet</Text>
-          ) : (
-            recentTx.map((t, i) => (
-              <SwipeableTransactionRow
-                key={`tx-${t.id}-${i}`}
-                transaction={t}
-                isFirst={i === 0}
-                onPress={() => router.push(`/transaction/${t.id}`)}
-                onDelete={() => {
-                  Alert.alert(
-                    'Delete transaction',
-                    `Remove "${t.title}"?`,
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Delete', style: 'destructive', onPress: () => deleteTransaction(t.id) },
-                    ]
-                  );
-                }}
-                dangerColor={theme.danger}
-                iconColor="#fff"
-                textColor={theme.text}
-                metaColor={theme.textTertiary}
-                borderColor={theme.border}
-              />
-            ))
-          )}
-        </View>
+        <TouchableOpacity
+          style={[styles.recentHeader, { borderBottomColor: theme.border }]}
+          onPress={() => setRecentExpanded((e) => !e)}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.sectionLabel, styles.sectionLabelTop, { color: theme.textSecondary }]}>Recent</Text>
+          <Text style={[styles.collapseChevron, { color: theme.textTertiary }]}>
+            {recentExpanded ? '▼' : '▶'}
+          </Text>
+        </TouchableOpacity>
+        {recentExpanded && (
+          <View style={[styles.card, { backgroundColor: theme.surface }]}>
+            {recentTx.length === 0 ? (
+              <Text style={[styles.empty, { color: theme.textTertiary }]}>No transactions yet</Text>
+            ) : (
+              recentTx.map((t, i) => (
+                <SwipeableTransactionRow
+                  key={`tx-${t.id}-${i}`}
+                  transaction={t}
+                  isFirst={i === 0}
+                  onPress={() => router.push(`/transaction/${t.id}`)}
+                  onDelete={() => {
+                    Alert.alert(
+                      'Delete transaction',
+                      `Remove "${t.title}"?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Delete', style: 'destructive', onPress: () => deleteTransaction(t.id) },
+                      ]
+                    );
+                  }}
+                  dangerColor={theme.danger}
+                  iconColor="#fff"
+                  textColor={theme.text}
+                  metaColor={theme.textTertiary}
+                  borderColor={theme.border}
+                />
+              ))
+            )}
+          </View>
+        )}
 
         <Text style={[styles.sectionLabel, styles.sectionLabelTop, { color: theme.textSecondary }]}>Spending breakdown</Text>
         <View style={[styles.spendingCard, { backgroundColor: theme.surface }]}>
@@ -555,13 +589,9 @@ export default function MoneyScreen() {
           {breakdownRows.length > 0 && (
             <View style={styles.breakdown}>
               {breakdownRows.map(({ category, amountCents }, index) => {
-                const hasExpandable = category === 'Subscriptions'
-                  ? subscriptions.length > 0
-                  : (transactionsByCategory[category]?.length ?? 0) > 0;
+                const txs = (transactionsByCategory[category] ?? []).sort((a, b) => b.dateISO.localeCompare(a.dateISO));
+                const hasExpandable = txs.length > 0;
                 const isCategoryExpanded = expandedCategory === category;
-                const txs = category === 'Subscriptions'
-                  ? []
-                  : (transactionsByCategory[category] ?? []).sort((a, b) => b.dateISO.localeCompare(a.dateISO));
                 return (
                   <View key={`breakdown-${index}-${category}`}>
                     <TouchableOpacity
@@ -584,29 +614,7 @@ export default function MoneyScreen() {
                         )}
                       </View>
                     </TouchableOpacity>
-                    {isCategoryExpanded && category === 'Subscriptions' && subscriptions.length > 0 && (
-                      <View style={[styles.categoryTransactions, { borderLeftColor: theme.border }]}>
-                        {subscriptions.map((s, i) => (
-                          <View
-                            key={s.id}
-                            style={[
-                              styles.txRow,
-                              i === 0 && styles.txRowFirst,
-                              { borderTopColor: theme.border },
-                            ]}
-                          >
-                            <View style={styles.txLeft}>
-                              <Text style={[styles.txTitle, { color: theme.text }]}>{s.title}</Text>
-                              <Text style={[styles.txMeta, { color: theme.textTertiary }]}>
-                                {s.cadence} · Next: {s.nextDueISO}
-                              </Text>
-                            </View>
-                            <Text style={[styles.txAmount, { color: theme.text }]}>{formatCurrency(s.amountCents)}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-                    {isCategoryExpanded && category !== 'Subscriptions' && txs.length > 0 && (
+                    {isCategoryExpanded && txs.length > 0 && (
                       <View style={[styles.categoryTransactions, { borderLeftColor: theme.border }]}>
                         {txs.map((t, i) => (
                           <SwipeableTransactionRow
@@ -687,6 +695,41 @@ export default function MoneyScreen() {
               <Text style={[styles.analyticsLabel, { color: theme.textTertiary }]}>Recurring</Text>
               <Text style={[styles.analyticsValue, { color: theme.text }]}>{formatCurrency(subscriptionMonthlyCents)}</Text>
               <Text style={[styles.analyticsHint, { color: theme.textTertiary }]}>subs / month</Text>
+            </View>
+          )}
+          {monthTransactions.length > 0 && (
+            <View style={[styles.analyticsCard, { backgroundColor: theme.surface }]}>
+              <Text style={[styles.analyticsLabel, { color: theme.textTertiary }]}>Avg transaction</Text>
+              <Text style={[styles.analyticsValue, { color: theme.text }]}>{formatCurrency(avgTransactionCents)}</Text>
+              <Text style={[styles.analyticsHint, { color: theme.textTertiary }]}>per transaction</Text>
+            </View>
+          )}
+          {categoryCount > 0 && (
+            <View style={[styles.analyticsCard, { backgroundColor: theme.surface }]}>
+              <Text style={[styles.analyticsLabel, { color: theme.textTertiary }]}>Categories used</Text>
+              <Text style={[styles.analyticsValue, { color: theme.text }]}>{categoryCount}</Text>
+              <Text style={[styles.analyticsHint, { color: theme.textTertiary }]}>this month</Text>
+            </View>
+          )}
+          {projectedMonthEndCents > 0 && daysElapsed > 0 && (
+            <View style={[styles.analyticsCard, { backgroundColor: theme.surface }]}>
+              <Text style={[styles.analyticsLabel, { color: theme.textTertiary }]}>Projected month end</Text>
+              <Text style={[styles.analyticsValue, { color: theme.text }]}>{formatCurrency(projectedMonthEndCents)}</Text>
+              <Text style={[styles.analyticsHint, { color: theme.textTertiary }]}>at current pace</Text>
+            </View>
+          )}
+          {mostTxCategory && (
+            <View style={[styles.analyticsCard, { backgroundColor: theme.surface }]}>
+              <Text style={[styles.analyticsLabel, { color: theme.textTertiary }]}>Most active</Text>
+              <Text style={[styles.analyticsValue, { color: theme.text }]} numberOfLines={1}>{mostTxCategory.category}</Text>
+              <Text style={[styles.analyticsHint, { color: theme.textTertiary }]}>{mostTxCategory.count} transactions</Text>
+            </View>
+          )}
+          {smallestTx && (
+            <View style={[styles.analyticsCard, { backgroundColor: theme.surface }]}>
+              <Text style={[styles.analyticsLabel, { color: theme.textTertiary }]}>Smallest spend</Text>
+              <Text style={[styles.analyticsValue, { color: theme.text }]} numberOfLines={1}>{smallestTx.title}</Text>
+              <Text style={[styles.analyticsHint, { color: theme.textTertiary }]}>{formatCurrency(smallestTx.amountCents)}</Text>
             </View>
           )}
         </View>
@@ -834,6 +877,19 @@ const styles = StyleSheet.create({
   heroLabel: { fontSize: 13, fontWeight: '500', marginBottom: spacing.xs },
   heroValue: { fontSize: 32, fontWeight: '600', letterSpacing: -0.8 },
   sectionLabelTop: { marginTop: spacing.xl, marginBottom: spacing.sm },
+  recentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.xl,
+    marginBottom: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+  },
+  collapseChevron: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   statementCard: {
     padding: spacing.lg,
     borderRadius: radius.xl,

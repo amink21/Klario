@@ -102,7 +102,13 @@ export default function ItemsScreen() {
       default:
         list = items;
     }
-    return [...list].sort((a, b) => getDueTimestamp(a.nextDueISO, a.dueTime) - getDueTimestamp(b.nextDueISO, b.dueTime));
+    return [...list].sort((a, b) => {
+      // Completed (done) items go to the bottom
+      const aDone = a.status === 'completed' ? 1 : 0;
+      const bDone = b.status === 'completed' ? 1 : 0;
+      if (aDone !== bDone) return aDone - bDone;
+      return getDueTimestamp(a.nextDueISO, a.dueTime) - getDueTimestamp(b.nextDueISO, b.dueTime);
+    });
   }, [items, filter]);
 
   const handleAddItem = async (item: Omit<LifeItem, 'id' | 'status'>) => {
