@@ -7,7 +7,10 @@
     "android": "node node_modules/expo/bin/cli start --android",
     "ios": "node node_modules/expo/bin/cli start --ios",
     "web": "node node_modules/expo/bin/cli start --web",
-    "smartInput:examples": "npx tsx lib/smartInput/examples.ts"
+    "smartInput:examples": "npx tsx lib/smartInput/examples.ts",
+    "version:bump": "node scripts/bump-version.js",
+    "build:ios": "npm run version:bump && eas build --platform ios --profile production",
+    "build:android": "npm run version:bump && eas build --platform android --profile production"
   },
   "dependencies": {
     "@expo-google-fonts/manrope": "^0.2.3",
