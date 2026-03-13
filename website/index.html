@@ -8,93 +8,156 @@
   <link rel="icon" type="image/svg+xml" href="images/bear-png.svg" />
   <link rel="apple-touch-icon" href="images/bear-png.svg" />
   <link rel="stylesheet" href="styles.css" />
+  <script src="site.js" defer></script>
 </head>
 <body>
   <header class="site-header">
     <div class="site-header-inner">
-      <a href="index.html" class="logo">
+      <a href="#top" class="logo">
         <img src="images/bear-png.svg" alt="" class="logo-icon" width="36" height="36" />
         <span>Klario</span>
       </a>
       <nav class="nav-links">
-        <a href="faq.html">FAQ</a>
-        <a href="support.html">Support</a>
-        <a href="privacy.html">Privacy</a>
+        <a href="#how-it-works">How it works</a>
+        <a href="#features">Features</a>
+        <a href="#download">Download</a>
+        <a href="#faq" class="nav-cta">FAQ</a>
       </nav>
     </div>
   </header>
 
-  <main>
+  <main id="top">
     <section class="hero">
-      <h1>Your life. Your bills. Your control.</h1>
-      <p class="tagline">Track what’s due, manage subscriptions, and see where your money goes—all in one app. No spreadsheets, no clutter.</p>
-      <div class="cta-block">
-        <a href="#download" class="btn btn-primary">Download free</a>
-        <p style="color: var(--text-tertiary); margin-top: var(--space-md); font-size: 0.9rem;">Scroll to explore</p>
+      <p class="hero-eyebrow" data-animate="fade-up">Life admin, made calm</p>
+      <h1 data-animate="fade-up">Never lose track of bills, reminders, or spend again.</h1>
+      <p class="tagline" data-animate="fade-up">
+        Klario keeps your due dates, subscriptions, and monthly spending in one clean place—so you
+        can stay on top of life without spreadsheets or stress.
+      </p>
+      <div class="hero-actions" data-animate="fade-up">
+        <a href="#download" class="btn btn-primary">Get Klario for iOS</a>
+        <span class="hero-scroll-hint">Scroll to see how it works</span>
+      </div>
+      <div class="hero-band" data-animate="fade-up">
+        <div class="hero-copy">
+          <p>
+            Klario gives you a calm at-a-glance view of what’s due, what’s coming up, and how your
+            month is shaping up—reminders, spending, and subscriptions all woven together.
+          </p>
+          <p>
+            Set it up once, and Klario quietly keeps you ahead of bills, renewals, and spend,
+            without nagging or noise.
+          </p>
+        </div>
+        <div class="hero-phone-wrap">
+          <div class="hero-phone">
+            <div class="hero-phone-screen hero-phone-screen--video">
+              <video
+                class="hero-phone-video"
+                src="videos/ScreenRecording_02-23-2026 18-16-29_1.mov"
+                autoplay
+                muted
+                loop
+                playsinline
+              ></video>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section class="section-head">
+    <section id="how-it-works" class="section-head" data-animate="fade-up">
       <h2>Everything you need for life admin</h2>
       <p>Reminders, spending, and subscriptions in one place. Simple and built for everyday use.</p>
     </section>
 
-    <section class="features">
-      <div class="feature-card">
+    <section id="features" class="features">
+      <div class="feature-card" data-animate="fade-up">
         <h3>Reminders & due dates</h3>
         <p>Bills, renewals, and one-off tasks. Set a lead time and get notified before something is due. Never miss a payment or deadline again.</p>
       </div>
-      <div class="feature-card">
+      <div class="feature-card" data-animate="fade-up">
         <h3>Spend & breakdown</h3>
         <p>Add transactions manually or import from PDF/CSV statements. View spending by month and category, with insights and “view all spends” in one tap.</p>
       </div>
-      <div class="feature-card">
+      <div class="feature-card" data-animate="fade-up">
         <h3>Subscriptions</h3>
         <p>Keep track of recurring costs in one list. See what you’re paying each month and avoid surprise charges.</p>
       </div>
-      <div class="feature-card">
+      <div class="feature-card" data-animate="fade-up">
         <h3>Sync (optional)</h3>
         <p>Sign in to sync your items and transactions to the cloud. Access the same data across devices whenever you need it.</p>
       </div>
     </section>
 
-    <section class="bullet-section">
-      <h3>All in one place</h3>
-      <ul class="bullet-list">
-        <li><strong>Due items & reminders</strong> – Bills, tasks, and renewals with customizable lead time</li>
-        <li><strong>Spending by month</strong> – Switch months, see breakdown by category, view all spends</li>
-        <li><strong>Import from statements</strong> – Pick a PDF or CSV; the app extracts transactions for you</li>
-        <li><strong>Subscription list</strong> – One list of recurring costs, no spreadsheets</li>
-        <li><strong>Insights</strong> – Avg per day, top category, largest spend, vs last month</li>
-        <li><strong>Morning brief</strong> – Optional daily notification with a calm summary of what’s due and upcoming</li>
-      </ul>
-    </section>
-
-    <section class="section-head">
-      <h2>No spreadsheets. No clutter. No hassle.</h2>
-      <p>Klario keeps reminders, spending, and subscriptions in one app. Add items with natural language, import from bank statements, and get a clear view of your month. Simple, fast, and built for people who’d rather live than wrestle with tools.</p>
-    </section>
-
-    <section class="section-head">
-      <h2>Getting started is simple</h2>
-      <p>Three steps. Ready in minutes.</p>
-    </section>
-
-    <section class="steps">
-      <div class="step-card">
-        <div class="step-num">01</div>
-        <h3>Download Klario</h3>
-        <p>Get the app from the App Store. No account required to start exploring.</p>
+    <section class="details">
+      <div class="detail-row" data-animate="fade-up">
+        <div class="detail-copy">
+          <h3>See everything that’s coming up</h3>
+          <p>
+            Klario pulls your reminders, subscriptions, and amounts into one calm view so you know
+            what’s due this week and what’s around the corner.
+          </p>
+          <ul class="detail-list">
+            <li><strong>Due items & reminders</strong> – Bills, tasks, and renewals with customizable lead time.</li>
+            <li><strong>Spending by month</strong> – Switch months, see breakdown by category, view all spends.</li>
+          </ul>
+        </div>
+        <div class="detail-visual">
+          <div class="detail-pill">
+            <span class="detail-pill-dot"></span>
+            <span>Today · At a glance</span>
+          </div>
+          <div class="detail-card-stack">
+            <div class="detail-mini-card">
+              <strong>Rent due Friday</strong>
+              <span>Reminder set 3 days before · $1,200</span>
+            </div>
+            <div class="detail-mini-card">
+              <strong>Spotify & phone bill</strong>
+              <span>2 subscriptions this week · $48 total</span>
+            </div>
+            <div class="detail-mini-card">
+              <strong>This month so far</strong>
+              <span>$1,320 spent · Groceries is your top category</span>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="step-card">
-        <div class="step-num">02</div>
-        <h3>Add your first item</h3>
-        <p>Type something like “Car insurance due March 12” or add a transaction. Set reminders and categories to your liking.</p>
-      </div>
-      <div class="step-card">
-        <div class="step-num">03</div>
-        <h3>Import or sync (optional)</h3>
-        <p>Import from a statement PDF/CSV, or sign in to sync your data across devices.</p>
+
+      <div class="detail-row detail-row--reverse" data-animate="fade-up">
+        <div class="detail-visual">
+          <div class="detail-pill">
+            <span class="detail-pill-dot"></span>
+            <span>Quick add · Natural language</span>
+          </div>
+          <div class="detail-card-stack">
+            <div class="detail-mini-card">
+              <strong>“Car insurance due April 12”</strong>
+              <span>Klario turns this into a dated reminder with a lead time.</span>
+            </div>
+            <div class="detail-mini-card">
+              <strong>“Groceries $82 at No Frills”</strong>
+              <span>Logged as spend with a merchant icon and category set.</span>
+            </div>
+            <div class="detail-mini-card">
+              <strong>“Netflix $15 monthly”</strong>
+              <span>Added to your subscriptions list so it’s never a surprise charge.</span>
+            </div>
+          </div>
+        </div>
+        <div class="detail-copy">
+          <h3>No spreadsheets. No clutter. No hassle.</h3>
+          <p>
+            Add items the way you think about them—Klario does the parsing. Bills, renewals, and
+            transactions land in the right place with the right dates.
+          </p>
+          <ul class="detail-list">
+            <li><strong>Import from statements</strong> – Pick a PDF or CSV; Klario extracts transactions for you.</li>
+            <li><strong>Subscription list</strong> – One list of recurring costs, always up to date.</li>
+            <li><strong>Insights & brief</strong> – Morning brief and monthly insights keep you gently on track.</li>
+          </ul>
+        </div>
       </div>
     </section>
 
@@ -106,7 +169,7 @@
       </div>
     </section>
 
-    <section class="faq-preview">
+    <section id="faq" class="faq-preview">
       <h2>Questions?</h2>
       <div class="faq-list">
         <div class="faq-item"><a href="faq.html#what-is-klario">What is Klario?</a></div>
