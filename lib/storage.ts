@@ -47,7 +47,7 @@ function useSupabase(): boolean {
 }
 
 /** Use Supabase only when configured and user is signed in; otherwise use local storage. */
-async function useSupabaseAuth(): Promise<boolean> {
+export async function useSupabaseAuth(): Promise<boolean> {
   if (!supabase) return false;
   const uid = await getUserId();
   return !!uid;

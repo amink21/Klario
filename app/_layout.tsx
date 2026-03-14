@@ -17,7 +17,7 @@ import { StartupAnimation } from '@/components/StartupAnimation';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useStore } from '@/lib/store';
 import { getHasOnboarded, setHasOnboarded } from '@/lib/onboardingStorage';
-import { hasSeeded, setSeeded } from '@/lib/storage';
+import { hasSeeded, setSeeded, useSupabaseAuth } from '@/lib/storage';
 import { defaultSettings } from '@/lib/seed';
 import {
   setLifeItems,
@@ -107,9 +107,14 @@ function RootLayoutNav() {
     (async () => {
       const seeded = await hasSeeded();
       if (!seeded) {
-        await setLifeItems([]);
-        await setTransactions([]);
-        await setSubscriptions([]);
+        // Only clear local storage when not using Supabase. When signed in to Supabase,
+        // never wipe server data—just ensure default settings and mark seeded.
+        const usingSupabase = await useSupabaseAuth();
+        if (!usingSupabase) {
+          await setLifeItems([]);
+          await setTransactions([]);
+          await setSubscriptions([]);
+        }
         await setSettings(defaultSettings());
         await setSeeded();
       }
