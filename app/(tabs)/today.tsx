@@ -57,7 +57,7 @@ export default function TodayScreen() {
     todayISO(),
   );
   const [datePickerOpen, setDatePickerOpen] = React.useState(false);
-  const [comingUpDays, setComingUpDays] = React.useState<0 | 7 | 14 | 30>(14);
+  const [comingUpDays, setComingUpDays] = React.useState<0 | 7 | 14 | 30>(0);
   const [smartInputLoading, setSmartInputLoading] = React.useState(false);
   const [inputBoxStatus, setInputBoxStatus] =
     React.useState<InputBoxStatus>(null);

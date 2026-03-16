@@ -29,6 +29,9 @@ interface AppState {
   /** When set, show "Have you completed?" modal (from due-reminder notification tap). */
   reminderNotificationItemId: string | null;
   setReminderNotificationItemId: (id: string | null) => void;
+  /** When set, show update-available modal with this data (for testing). */
+  testUpdatePrompt: { storeUrl: string; storeVersion: string } | null;
+  setTestUpdatePrompt: (v: { storeUrl: string; storeVersion: string } | null) => void;
   load: () => Promise<void>;
   setItems: (items: LifeItem[]) => Promise<void>;
   addTransaction: (tx: Transaction) => Promise<void>;
@@ -52,6 +55,8 @@ export const useStore = create<AppState>((set, get) => ({
   setDeepLinkItemId: (id) => set({ deepLinkItemId: id }),
   reminderNotificationItemId: null,
   setReminderNotificationItemId: (id) => set({ reminderNotificationItemId: id }),
+  testUpdatePrompt: null,
+  setTestUpdatePrompt: (v) => set({ testUpdatePrompt: v }),
 
   load: async () => {
     const [rawItems, rawTx, rawSubs, settings] = await Promise.all([

@@ -101,12 +101,13 @@ export async function fetchLifeItems(): Promise<LifeItem[]> {
 export async function setLifeItems(items: LifeItem[]): Promise<void> {
   const uid = await getUserId();
   if (!supabase || !uid) throw new Error("Not authenticated");
+  // Safeguard: never replace server data with an empty list (avoids accidental wipe from stale setItems([]))
+  if (items.length === 0) return;
   const { error: delErr } = await supabase
     .from("life_items")
     .delete()
     .eq("user_id", uid);
   if (delErr) throw delErr;
-  if (items.length === 0) return;
   const rows = items.map((item) => ({
     id: item.id,
     user_id: uid,

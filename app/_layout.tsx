@@ -29,6 +29,12 @@ import { updateMorningBriefSchedule } from '@/lib/notifications';
 import { runNudgeScheduler } from '@/lib/nudges';
 import { MorningBriefModal } from '@/components/MorningBriefModal';
 import { ReminderCompletedModal } from '@/components/ReminderCompletedModal';
+import { UpdateAvailableModal } from '@/components/UpdateAvailableModal';
+import {
+  checkForUpdate,
+  getLastUpdatePromptVersion,
+  setLastUpdatePromptVersion,
+} from '@/lib/versionCheck';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -102,6 +108,30 @@ function RootLayoutNav() {
   const setShowMorningBriefModal = useStore((s) => s.setShowMorningBriefModal);
   const setDeepLinkItemId = useStore((s) => s.setDeepLinkItemId);
   const setReminderNotificationItemId = useStore((s) => s.setReminderNotificationItemId);
+
+  const [updatePrompt, setUpdatePrompt] = useState<{
+    storeUrl: string;
+    storeVersion: string;
+  } | null>(null);
+  const testUpdatePrompt = useStore((s) => s.testUpdatePrompt);
+  const setTestUpdatePrompt = useStore((s) => s.setTestUpdatePrompt);
+
+  // Show modal from real version check or from Settings "Test update modal".
+  const activeUpdatePrompt = updatePrompt ?? testUpdatePrompt;
+
+  // On load, check if a newer store version exists; show prompt once per version.
+  useEffect(() => {
+    if (!loaded) return;
+    (async () => {
+      const result = await checkForUpdate();
+      if (result.updateAvailable) {
+        const lastPrompted = await getLastUpdatePromptVersion();
+        if (lastPrompted !== result.storeVersion) {
+          setUpdatePrompt({ storeUrl: result.storeUrl, storeVersion: result.storeVersion });
+        }
+      }
+    })();
+  }, [loaded]);
 
   useEffect(() => {
     (async () => {
@@ -186,6 +216,22 @@ function RootLayoutNav() {
         </Stack>
         <MorningBriefModal />
         <ReminderCompletedModal />
+        <UpdateAvailableModal
+          visible={!!activeUpdatePrompt}
+          storeUrl={activeUpdatePrompt?.storeUrl ?? ''}
+          storeVersion={activeUpdatePrompt?.storeVersion ?? ''}
+          onUpdate={() => {
+            setUpdatePrompt(null);
+            setTestUpdatePrompt(null);
+          }}
+          onLater={async () => {
+            if (updatePrompt) {
+              await setLastUpdatePromptVersion(updatePrompt.storeVersion);
+            }
+            setUpdatePrompt(null);
+            setTestUpdatePrompt(null);
+          }}
+        />
       </ThemeProvider>
     </BottomSheetModalProvider>
   );

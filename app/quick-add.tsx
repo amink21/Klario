@@ -42,6 +42,10 @@ export default function QuickAddScreen() {
 
     (async () => {
       try {
+        // Ensure store is hydrated before adding (cold start from deep link can have empty items).
+        await load();
+        if (cancelled) return;
+
         const outcome = await handleSmartInput(text, 'today');
         if (cancelled) return;
 
@@ -97,7 +101,9 @@ export default function QuickAddScreen() {
               ? 'Added reminder'
               : createSpending
                 ? 'Added spend'
-                : outcome.toastMessage || 'Done';
+                : outcome.action === 'done'
+                  ? (outcome.toastMessage || 'Done')
+                  : 'Done';
         setToastMessage(msg);
 
         if (cancelled) return;

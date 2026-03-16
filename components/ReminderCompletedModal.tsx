@@ -28,7 +28,7 @@ export function ReminderCompletedModal() {
   const itemId = useStore((s) => s.reminderNotificationItemId);
   const setReminderNotificationItemId = useStore((s) => s.setReminderNotificationItemId);
   const items = useStore((s) => s.items);
-  const setItems = useStore((s) => s.setItems);
+  const load = useStore((s) => s.load);
 
   const [loading, setLoading] = useState(false);
   const [pushedMessage, setPushedMessage] = useState<string | null>(null);
@@ -64,10 +64,7 @@ export function ReminderCompletedModal() {
       if (item.cadence === 'one_time') {
         if (item.notificationId) await cancelScheduledNotification(item.notificationId);
         await updateLifeItem(item.id, { status: 'completed', notificationId: null });
-        const updated = items.map((i) =>
-          i.id === item.id ? { ...i, status: 'completed' as const, notificationId: null } : i
-        );
-        await setItems(updated);
+        await load();
         handleClose();
         return;
       }
@@ -89,10 +86,7 @@ export function ReminderCompletedModal() {
           )) ?? null;
       }
       await updateLifeItem(item.id, { nextDueISO: nextDue, notificationId });
-      const updated = items.map((i) =>
-        i.id === item.id ? { ...i, nextDueISO: nextDue, notificationId: notificationId ?? undefined } : i
-      );
-      await setItems(updated);
+      await load();
 
       const label = CADENCE_NEXT_LABEL[item.cadence as keyof typeof CADENCE_NEXT_LABEL];
       setPushedMessage(`It will now be pushed to ${label}.`);
