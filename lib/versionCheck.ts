@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
-const LAST_UPDATE_PROMPT_KEY = '@klario_last_update_prompt_version';
+const LAST_UPDATE_PROMPT_KEY = '@klovio_last_update_prompt_version';
 
 export async function getLastUpdatePromptVersion(): Promise<string | null> {
   return AsyncStorage.getItem(LAST_UPDATE_PROMPT_KEY);
@@ -20,7 +20,7 @@ export type VersionCheckResult =
   | { updateAvailable: true; storeUrl: string; storeVersion: string }
   | { updateAvailable: false };
 
-const IOS_BUNDLE_ID = Constants.expoConfig?.ios?.bundleIdentifier ?? 'com.amin123786.klario';
+const IOS_BUNDLE_ID = Constants.expoConfig?.ios?.bundleIdentifier ?? 'com.amin123786.klovio';
 
 /** Fetch your app's App Store page URL from iTunes Lookup (iOS only). Returns null if not found or on Android. */
 export async function getAppStoreUrl(): Promise<{ storeUrl: string; storeVersion: string } | null> {

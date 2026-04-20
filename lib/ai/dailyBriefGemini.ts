@@ -32,7 +32,7 @@ export async function generateDailyBriefWithGemini(
     'Content-Type': 'application/json',
   };
   if (GEMINI_BACKEND_IMPORT_KEY) {
-    headers['X-KLARIO-IMPORT-KEY'] = GEMINI_BACKEND_IMPORT_KEY;
+    headers['X-KLOVIO-IMPORT-KEY'] = GEMINI_BACKEND_IMPORT_KEY;
   }
 
   try {

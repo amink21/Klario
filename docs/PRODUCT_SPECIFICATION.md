@@ -1,4 +1,4 @@
-# Klario — Full Product Specification
+# Klovio — Full Product Specification
 
 *Reverse-engineered from the Life_App codebase. Last updated: March 2025.*
 
@@ -6,7 +6,7 @@
 
 ## 1. Overview
 
-**Klario** is a calm, modern **life & money** mobile app that helps users:
+**Klovio** is a calm, modern **life & money** mobile app that helps users:
 
 - Track **reminders and bills** (life items) with due dates and cadences
 - Log **spending and income** (transactions) with categories
@@ -78,20 +78,20 @@ The app is **Expo (React Native)** with optional **Supabase** sync and a **FastA
   - **Preview notifications**: Code exists but UI is **commented out** (see Hidden/Partial).
 - **Quick Add**: Link to **Quick Add setup** screen (Back Tap + Shortcut instructions).
 - **Data**: “Clear all data” with confirmation (deletes all items, transactions, subscriptions; resets settings).
-- **About**: App name (Klario), Version, “Show onboarding again”.
+- **About**: App name (Klovio), Version, “Show onboarding again”.
 
 Modals: **Privacy policy** (in-app sections), **Support** (mailto with prefilled subjects: Bug report, Feature request, General request, Billing/Account, Other).
 
 ### 2.6 Quick Add (Deep Link)
 
-- **Route**: `/quick-add?text=...` (scheme `klario://quick-add`).
+- **Route**: `/quick-add?text=...` (scheme `klovio://quick-add`).
 - **Flow**: Runs Smart Input on `text`; executes create reminder/spending; shows toast; redirects to Money tab if only spending, else Today tab.
-- **Entry points**: Back Tap (iOS) → Shortcut → “Quick Add to Klario” → deep link with dictated or typed text; or any app opening `klario://quick-add?text=...`.
+- **Entry points**: Back Tap (iOS) → Shortcut → “Quick Add to Klovio” → deep link with dictated or typed text; or any app opening `klovio://quick-add?text=...`.
 
 ### 2.7 Quick Add Setup
 
-- **Steps (iOS)**: 1) Install Shortcut (opens install URL). 2) Assign Back Tap (Settings → Accessibility → Touch → Back Tap → Triple Tap → Quick Add to Klario). 3) Test (opens test deep link).
-- **Alternatives**: “Home Screen Widget” — modal says “Coming soon”; Siri: “Hey Siri, Quick Add to Klario” then speak entry.
+- **Steps (iOS)**: 1) Install Shortcut (opens install URL). 2) Assign Back Tap (Settings → Accessibility → Touch → Back Tap → Triple Tap → Quick Add to Klovio). 3) Test (opens test deep link).
+- **Alternatives**: “Home Screen Widget” — modal says “Coming soon”; Siri: “Hey Siri, Quick Add to Klovio” then speak entry.
 - **Android**: Message that Back Tap is iOS-only; can still use deep link from another app/shortcut. Test button available.
 
 ### 2.8 Transaction Detail
@@ -178,7 +178,7 @@ Modals: **Privacy policy** (in-app sections), **Support** (mailto with prefilled
 ### 4.5 PDF import
 
 1. User picks PDF in Money tab.
-2. **parsePdfWithGemini(uri)** reads file, POSTs to backend **/imports/statement/parse-gemini** (multipart file + timezone). Optional **X-KLARIO-IMPORT-KEY** if backend has IMPORT_API_KEY.
+2. **parsePdfWithGemini(uri)** reads file, POSTs to backend **/imports/statement/parse-gemini** (multipart file + timezone). Optional **X-KLOVIO-IMPORT-KEY** if backend has IMPORT_API_KEY.
 3. Backend: rate limit, read PDF into memory, call **parse_pdf_with_gemini** (OpenRouter Gemini 2.5 Flash); return **GeminiParseResponse** (transactions, warnings, stats).
 4. Client: dedupe by (dateISO, title, amountCents); exclude already-existing; convert direction to signed amountCents; **addTransactions**; toast; **setLastImportISO** for nudge logic.
 
@@ -228,7 +228,7 @@ Modals: **Privacy policy** (in-app sections), **Support** (mailto with prefilled
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  Klario App (Expo / React Native)                               │
+│  Klovio App (Expo / React Native)                               │
 │  - Expo Router (tabs + stack)                                   │
 │  - Zustand store ←→ storage (AsyncStorage / Supabase)            │
 │  - Smart Input (local + optional OpenRouter/Gemini)              │
@@ -257,7 +257,7 @@ Modals: **Privacy policy** (in-app sections), **Support** (mailto with prefilled
 
 ### 6.3 Backend
 
-- **FastAPI**: `/health`, `/routes`, `/imports/statement/parse` (heuristic PDF), `/imports/statement/parse-gemini` (Gemini PDF), `/ai/daily-brief` (Gemini). Rate limit per IP; optional X-KLARIO-IMPORT-KEY. CORS from env.
+- **FastAPI**: `/health`, `/routes`, `/imports/statement/parse` (heuristic PDF), `/imports/statement/parse-gemini` (Gemini PDF), `/ai/daily-brief` (Gemini). Rate limit per IP; optional X-KLOVIO-IMPORT-KEY. CORS from env.
 - **Optional**: `services/pdf-extract` (Flask) POST /extract with base64 PDF for text extraction (not used by main app flow in repo).
 
 ---
@@ -313,8 +313,8 @@ Migrations add: morning_brief_time, daily/weekly cadence, default_remind_days_be
 ### 8.1 Environment variables (app)
 
 - **EXPO_PUBLIC_SUPABASE_URL**, **EXPO_PUBLIC_SUPABASE_ANON_KEY**: Supabase.
-- **EXPO_PUBLIC_IMPORT_API_URL**: Backend base (e.g. https://klario.onrender.com).
-- **EXPO_PUBLIC_IMPORT_API_KEY**: Optional; sent as X-KLARIO-IMPORT-KEY.
+- **EXPO_PUBLIC_IMPORT_API_URL**: Backend base (e.g. https://klovio.onrender.com).
+- **EXPO_PUBLIC_IMPORT_API_KEY**: Optional; sent as X-KLOVIO-IMPORT-KEY.
 - **EXPO_PUBLIC_PDF_EXTRACT_URL**: Optional PDF-extract service.
 - **EXPO_PUBLIC_OPENROUTER_API_KEY**, **EXPO_PUBLIC_OPENROUTER_BASE_URL**: Dev Smart Input; not for production.
 - **EXPO_PUBLIC_LOGO_DEV_TOKEN**: Optional merchant logo dev.
@@ -323,7 +323,7 @@ Migrations add: morning_brief_time, daily/weekly cadence, default_remind_days_be
 
 - **OPENROUTER_API_KEY**: PDF parsing.
 - **GEMINI_API_KEY** or **GOOGLE_API_KEY**: Daily brief.
-- **IMPORT_API_KEY**: Optional; app must send same as X-KLARIO-IMPORT-KEY.
+- **IMPORT_API_KEY**: Optional; app must send same as X-KLOVIO-IMPORT-KEY.
 - **MAX_UPLOAD_MB**, **RATE_LIMIT_PER_MINUTE**, **CORS_ORIGINS**, **GEMINI_MODEL**, **GEMINI_BRIEF_MODEL**, **TIMEZONE**.
 
 ---
@@ -353,7 +353,7 @@ Migrations add: morning_brief_time, daily/weekly cadence, default_remind_days_be
 
 ## 10. Complete Product Definition
 
-**Klario** is a **life and money companion** for people who want one place to see what’s due, what they’re spending, and a calm daily summary—without juggling multiple apps or spreadsheets.
+**Klovio** is a **life and money companion** for people who want one place to see what’s due, what they’re spending, and a calm daily summary—without juggling multiple apps or spreadsheets.
 
 **What it does:**
 
@@ -373,10 +373,10 @@ Migrations add: morning_brief_time, daily/weekly cadence, default_remind_days_be
   In the Today, Money, and Items tabs you can type one line like “Rent due March 1” or “Netflix $15 monthly” or “Groceries $80 today”. The app figures out whether it’s a reminder, a transaction, or both, and creates the right items. When it’s unsure, it shows you a review screen so you can confirm or tweak before saving.
 
 - **Quick Add**  
-  On iPhone you can set up **Back Tap** (triple tap) to run a Shortcut that opens Klario with a pre-filled line (e.g. from dictation). So you can add a reminder or log a purchase without opening the app first. The same deep link works from other apps or Siri.
+  On iPhone you can set up **Back Tap** (triple tap) to run a Shortcut that opens Klovio with a pre-filled line (e.g. from dictation). So you can add a reminder or log a purchase without opening the app first. The same deep link works from other apps or Siri.
 
 - **Account & sync**  
-  You can use Klario entirely on one device with no account. If you **sign in** (email/password or Apple), your reminders, transactions, subscriptions, and settings sync to the cloud so you can use the same data on another phone or after reinstall. Data is stored in your account and not sold for ads.
+  You can use Klovio entirely on one device with no account. If you **sign in** (email/password or Apple), your reminders, transactions, subscriptions, and settings sync to the cloud so you can use the same data on another phone or after reinstall. Data is stored in your account and not sold for ads.
 
 - **Notifications**  
   Besides the morning brief, you get **due reminders** (e.g. “Rent due in 2 days”) and optional **smart nudges** (e.g. spending insight or “consider importing a statement”). Tapping a due reminder opens the app and asks “Have you completed [this]?” so you can mark it done and, for recurring items, move to the next date.
@@ -385,7 +385,7 @@ Migrations add: morning_brief_time, daily/weekly cadence, default_remind_days_be
 Anyone who wants a single, calm place to stay on top of bills and due dates, see spending by category, and start the day with a short financial and task summary—without complexity or guilt-driven messaging.
 
 **How to describe it in one sentence:**  
-Klario is a calm life & money app that combines reminders and bills, spending tracking, PDF/CSV import, a daily morning brief, and natural-language quick add so you can see what’s due and what you’re spending in one place.
+Klovio is a calm life & money app that combines reminders and bills, spending tracking, PDF/CSV import, a daily morning brief, and natural-language quick add so you can see what’s due and what you’re spending in one place.
 
 ---
 

@@ -205,11 +205,11 @@ export async function scheduleNudgeNotification(
 
 /** Demo messages for smart nudge previews in settings (one per category). */
 export const DEMO_NUDGE_SAMPLES: { label: string; title: string; body: string }[] = [
-  { label: 'Spending', title: 'Klario', body: "You've spent $47 this week. Quick check-in?" },
-  { label: 'Subscriptions', title: 'Klario', body: 'Your subscriptions cost $29 this month.' },
-  { label: 'Statement', title: 'Klario', body: "Haven't imported a statement this month yet." },
-  { label: 'Positive', title: 'Klario', body: "You've been consistent this week 👏" },
-  { label: 'Check-in', title: 'Klario', body: 'Quick check-in? 📱' },
+  { label: 'Spending', title: 'Klovio', body: "You've spent $47 this week. Quick check-in?" },
+  { label: 'Subscriptions', title: 'Klovio', body: 'Your subscriptions cost $29 this month.' },
+  { label: 'Statement', title: 'Klovio', body: "Haven't imported a statement this month yet." },
+  { label: 'Positive', title: 'Klovio', body: "You've been consistent this week 👏" },
+  { label: 'Check-in', title: 'Klovio', body: 'Quick check-in? 📱' },
 ];
 
 /**

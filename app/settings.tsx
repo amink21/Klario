@@ -48,33 +48,33 @@ function dateToTimeString(d: Date): string {
 
 const PRESET_REMIND_DAYS = [1, 7, 14, 30] as const;
 
-const SUPPORT_EMAIL = "getklario@gmail.com";
+const SUPPORT_EMAIL = "getklovio@gmail.com";
 
 const SUPPORT_OPTIONS: { id: string; label: string; subject: string }[] = [
-  { id: "bug", label: "Bug report", subject: "Klario App: Bug Report" },
+  { id: "bug", label: "Bug report", subject: "Klovio App: Bug Report" },
   {
     id: "feature",
     label: "Feature request",
-    subject: "Klario App: Feature Request",
+    subject: "Klovio App: Feature Request",
   },
   {
     id: "request",
     label: "General request",
-    subject: "Klario App: General Request",
+    subject: "Klovio App: General Request",
   },
   {
     id: "billing",
     label: "Billing / Account",
-    subject: "Klario App: Billing / Account",
+    subject: "Klovio App: Billing / Account",
   },
-  { id: "other", label: "Other", subject: "Klario App: Support" },
+  { id: "other", label: "Other", subject: "Klovio App: Support" },
 ];
 
 /** Same policy as web (website/privacy.html). */
 const PRIVACY_POLICY_SECTIONS = [
   {
     title: "Overview",
-    body: 'Klario ("we", "our", or "the app") is designed to keep your reminders, spending, and subscriptions in one place. We care about your privacy and aim to store only what\'s needed to run the app and, if you choose, to sync your data to the cloud.',
+    body: 'Klovio ("we", "our", or "the app") is designed to keep your reminders, spending, and subscriptions in one place. We care about your privacy and aim to store only what\'s needed to run the app and, if you choose, to sync your data to the cloud.',
   },
   {
     title: "Data we collect and use",
@@ -94,7 +94,7 @@ const PRIVACY_POLICY_SECTIONS = [
   },
   {
     title: "Children",
-    body: "Klario is not directed at children under 13. We do not knowingly collect personal information from children under 13. If you believe we have received such information, please contact us and we will delete it.",
+    body: "Klovio is not directed at children under 13. We do not knowingly collect personal information from children under 13. If you believe we have received such information, please contact us and we will delete it.",
   },
   {
     title: "Changes",
@@ -984,7 +984,7 @@ export default function SettingsScreen() {
           <View style={styles.settingRow}>
             <Text style={[styles.label, { color: theme.text }]}>App</Text>
             <Text style={[styles.value, { color: theme.textSecondary }]}>
-              Klario
+              Klovio
             </Text>
           </View>
           <View
@@ -1081,7 +1081,7 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
-      {/* Support modal – choose type then open email to getklario@gmail.com */}
+      {/* Support modal – choose type then open email to getklovio@gmail.com */}
       <Modal
         visible={showSupportModal}
         transparent

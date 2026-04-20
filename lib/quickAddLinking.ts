@@ -9,7 +9,7 @@ export const SHORTCUT_INSTALL_URL =
   "https://www.icloud.com/shortcuts/3b8ff449a7474e44b98c865374dd9079";
 
 const TEST_DEEP_LINK_TEXT = "coffee today $5";
-const TEST_DEEP_LINK = `klario://quick-add?text=${encodeURIComponent(TEST_DEEP_LINK_TEXT)}`;
+const TEST_DEEP_LINK = `klovio://quick-add?text=${encodeURIComponent(TEST_DEEP_LINK_TEXT)}`;
 
 /** Opens system Settings. On iOS, tries to open Accessibility (then Touch > Back Tap). */
 export function openBackTapSettings(): void {

@@ -18,7 +18,7 @@ export interface DailyBriefInput {
   dueNext7Days?: { title: string; dateISO: string; amountCents?: number }[];
 }
 
-const CACHE_KEY_PREFIX = 'klario_ai_brief_';
+const CACHE_KEY_PREFIX = 'klovio_ai_brief_';
 
 /** In-memory cache: key = date ISO (YYYY-MM-DD), value = { lines, inputHash } */
 const cache = new Map<

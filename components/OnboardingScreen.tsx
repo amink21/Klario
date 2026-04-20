@@ -27,9 +27,9 @@ type Slide = {
 
 const SLIDES: Slide[] = [
   {
-    title: "Welcome to Klario",
+    title: "Welcome to Klovio",
     subtitle:
-      "I'm Klario, your AI guide. I'll help you make smarter decisions and organize your life.",
+      "I'm Klovio, your AI guide. I'll help you make smarter decisions and organize your life.",
   },
   {
     title: "Ask Anything",
@@ -39,12 +39,12 @@ const SLIDES: Slide[] = [
   {
     title: "Import from PDF",
     subtitle:
-      "Drop in bank or card statements (PDF or CSV). Klario extracts transactions so you can see spending by category without typing everything in.",
+      "Drop in bank or card statements (PDF or CSV). Klovio extracts transactions so you can see spending by category without typing everything in.",
   },
   {
     title: "Quick Add with Back Tap",
     subtitle:
-      "On iPhone, set up Back Tap to open Klario's input bar from anywhere. Add a reminder or log a purchase in seconds—no need to open the app first.",
+      "On iPhone, set up Back Tap to open Klovio's input bar from anywhere. Add a reminder or log a purchase in seconds—no need to open the app first.",
   },
   {
     title: "Simple & Personal",

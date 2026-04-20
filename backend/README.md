@@ -1,10 +1,10 @@
-# Klario Import API (Backend)
+# Klovio Import API (Backend)
 
-One-and-done PDF statement parsing for the Klario app. The app uploads a PDF; the server parses it and returns a list of transactions for client review. **The PDF is never stored**—temp files are deleted immediately after parsing. The app writes confirmed transactions to Supabase from the client.
+One-and-done PDF statement parsing for the Klovio app. The app uploads a PDF; the server parses it and returns a list of transactions for client review. **The PDF is never stored**—temp files are deleted immediately after parsing. The app writes confirmed transactions to Supabase from the client.
 
 **Do you need to run this backend?** Yes, if you use **PDF import (Gemini)** in the app. The app sends the PDF to this backend; the backend calls Gemini and returns transactions. Without the backend running, PDF import will fail.
 
-**What is the import key?** `IMPORT_API_KEY` / `X-KLARIO-IMPORT-KEY` is **optional**. If you don’t set `IMPORT_API_KEY` in the backend, you don’t need any import key—the app and curl examples work without that header. Set it only when you want to lock the import endpoints behind a secret key.
+**What is the import key?** `IMPORT_API_KEY` / `X-KLOVIO-IMPORT-KEY` is **optional**. If you don’t set `IMPORT_API_KEY` in the backend, you don’t need any import key—the app and curl examples work without that header. Set it only when you want to lock the import endpoints behind a secret key.
 
 ## Tech stack
 
@@ -53,7 +53,7 @@ Returns a list of registered routes. Use this to confirm your Render deploy has 
   - `file` (required): PDF statement file
   - `source` (optional): e.g. `TD`, `RBC`, `BMO` (helps parsing)
   - `timezone` (optional): e.g. `America/Montreal`
-- **Headers:** `X-KLARIO-IMPORT-KEY` only if you set `IMPORT_API_KEY` in the backend (otherwise omit).
+- **Headers:** `X-KLOVIO-IMPORT-KEY` only if you set `IMPORT_API_KEY` in the backend (otherwise omit).
 - **Response:** JSON with `source`, `transactions[]`, `warnings[]`, `stats`
 - **File handling:** Max size 15MB (configurable). Temp file is created, parsed, then deleted. No storage.
 
@@ -63,7 +63,7 @@ Transactions are returned for **client review**. The app will later insert confi
 
 - **Content-Type:** `application/json`
 - **Body:** `{ "upcomingItems": [...], "dueSoonCount", "forecastAmount", "yesterdaySpend", "topSpendCategory" }` (same as app `DailyBriefInput`)
-- **Headers:** `X-KLARIO-IMPORT-KEY` only if you set `IMPORT_API_KEY` in the backend
+- **Headers:** `X-KLOVIO-IMPORT-KEY` only if you set `IMPORT_API_KEY` in the backend
 - **Response:** `{ "lines": ["line1", "line2", ...] }` (1–4 short summary lines)
 - The Gemini API key is read from the **server** env (`GEMINI_API_KEY` or `GOOGLE_API_KEY` on Render). The app does not send or store the key.
 
@@ -73,7 +73,7 @@ Transactions are returned for **client review**. The app will later insert confi
 - **Body:**
   - `file` (required): PDF bank statement
   - `timezone` (optional): e.g. `America/Montreal` (default)
-- **Headers:** `X-KLARIO-IMPORT-KEY` only if you set `IMPORT_API_KEY` in the backend (otherwise omit).
+- **Headers:** `X-KLOVIO-IMPORT-KEY` only if you set `IMPORT_API_KEY` in the backend (otherwise omit).
 - **Response:** Supabase-ready JSON: `transactions[]` (dateISO, title, amountCents, direction, category, merchant, source, confidence), `warnings[]`, `stats` (pages, model). **No PDF storage**—file is read into memory, sent to Gemini, then discarded.
 - **Constraints:** Content-Type `application/pdf` or `application/octet-stream`; max 15MB.
 
@@ -91,7 +91,7 @@ curl -X POST "http://localhost:8000/imports/statement/parse-gemini" \
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `IMPORT_API_KEY` | Optional. If set, requests must send header `X-KLARIO-IMPORT-KEY` with the same value. If unset, no auth (fine for dev). | (none) |
+| `IMPORT_API_KEY` | Optional. If set, requests must send header `X-KLOVIO-IMPORT-KEY` with the same value. If unset, no auth (fine for dev). | (none) |
 | `GEMINI_API_KEY`, `GOOGLE_API_KEY`, or `EXPO_PUBLIC_GOOGLE_API_KEY` | Google Gemini API key (Render env). Backend checks all three. Used for PDF parse and morning brief. Free tier has low rate limits (~15 req/min); 429 = wait or enable billing. | (none) |
 | `GEMINI_MODEL` | Gemini model for PDF statement parsing (must support PDF). | `gemini-2.0-flash` |
 | `GEMINI_BRIEF_MODEL` | Gemini model for morning brief (text-only). Use 2.5 to match API key. | `gemini-2.5-flash` |
@@ -136,7 +136,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 You should see something like `Uvicorn running on http://0.0.0.0:8000`. Keep this terminal open while you use PDF import in the app.
 
-- **Import key:** You can skip it. Don’t set `IMPORT_API_KEY` and don’t send `X-KLARIO-IMPORT-KEY`; the backend won’t require it.
+- **Import key:** You can skip it. Don’t set `IMPORT_API_KEY` and don’t send `X-KLOVIO-IMPORT-KEY`; the backend won’t require it.
 - **From your phone:** Use your PC’s IP and port 8000 in the app’s `EXPO_PUBLIC_IMPORT_API_URL` (e.g. `http://192.168.2.25:8000`), and ensure the backend is running on that machine.
 
 ## Key expired or invalid?
@@ -189,7 +189,7 @@ If you see **429** from `POST /ai/daily-brief` or from PDF parse, Google’s Gem
 
 ```bash
 curl -X POST "http://localhost:8000/imports/statement/parse" \
-  -H "X-KLARIO-IMPORT-KEY: your-secret-key" \
+  -H "X-KLOVIO-IMPORT-KEY: your-secret-key" \
   -F "file=@statement.pdf" \
   -F "source=TD" \
   -F "timezone=America/Montreal"
@@ -197,7 +197,7 @@ curl -X POST "http://localhost:8000/imports/statement/parse" \
 
 ## Security / abuse
 
-- **API key:** Set `IMPORT_API_KEY`; client must send `X-KLARIO-IMPORT-KEY` with the same value.
+- **API key:** Set `IMPORT_API_KEY`; client must send `X-KLOVIO-IMPORT-KEY` with the same value.
 - **Rate limit:** In-memory per-IP limit (e.g. 10 requests/minute). Resets every minute.
 - **File size:** Rejects uploads larger than `MAX_UPLOAD_MB` with **413 Payload Too Large**.
 - **CORS:** Configure `CORS_ORIGINS` for production (e.g. your app’s origin).

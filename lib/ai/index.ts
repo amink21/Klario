@@ -1,5 +1,5 @@
 /**
- * Klario AI layer. All responses are validated with Zod.
+ * Klovio AI layer. All responses are validated with Zod.
  * API key: EXPO_PUBLIC_OPENROUTER_API_KEY (dev only). No hardcoding.
  * To switch to backend proxy: set EXPO_PUBLIC_OPENROUTER_BASE_URL and send key via proxy.
  */

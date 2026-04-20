@@ -9,7 +9,7 @@ import { formatCurrency } from './currency';
 import { computeLifeStatus } from './forecast';
 import { cancelNudgeNotifications, scheduleNudgeNotification } from './notifications';
 
-const NUDGE_STORAGE_KEY = 'klario_nudge_state';
+const NUDGE_STORAGE_KEY = 'klovio_nudge_state';
 
 export interface NudgeState {
   lastAppOpenISO: string;
@@ -328,7 +328,7 @@ export async function runNudgeScheduler(ctx: Omit<NudgeContext, 'nudgeState'>): 
 
   await cancelNudgeNotifications();
   const id = await scheduleNudgeNotification(
-    'Klario',
+    'Klovio',
     chosen.message,
     chosen.id,
     tomorrow

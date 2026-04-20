@@ -11,7 +11,7 @@ try:
 except ImportError:
     pass  # dotenv optional
 
-# API key for import endpoint (optional; if set, X-KLARIO-IMPORT-KEY required)
+# API key for import endpoint (optional; if set, X-KLOVIO-IMPORT-KEY required)
 IMPORT_API_KEY: str = os.environ.get("IMPORT_API_KEY", "")
 
 # Gemini API key (Render env: GEMINI_API_KEY, GOOGLE_API_KEY, or EXPO_PUBLIC_GOOGLE_API_KEY)

@@ -1,6 +1,6 @@
 # PDF text extraction service (Python)
 
-Extracts text from a PDF for the Klario app’s “Import from statement” flow. The app sends a base64-encoded PDF and receives plain text.
+Extracts text from a PDF for the Klovio app’s “Import from statement” flow. The app sends a base64-encoded PDF and receives plain text.
 
 ## API
 

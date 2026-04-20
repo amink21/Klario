@@ -5,8 +5,8 @@ import { supabase } from '@/lib/supabase';
 WebBrowser.maybeCompleteAuthSession?.();
 
 /**
- * Redirect URL for Supabase OAuth. Uses app scheme (klario://auth) so the
- * provider redirects back into the app. Add klario://auth to Supabase Redirect URLs.
+ * Redirect URL for Supabase OAuth. Uses app scheme (klovio://auth) so the
+ * provider redirects back into the app. Add klovio://auth to Supabase Redirect URLs.
  */
 export function getRedirectUri(): string {
   return Linking.createURL('auth');

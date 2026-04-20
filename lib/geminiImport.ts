@@ -47,7 +47,7 @@ export async function parsePdfWithGemini(uri: string, fileName?: string): Promis
   formData.append('timezone', 'America/Montreal');
 
   const headers: Record<string, string> = {};
-  if (GEMINI_BACKEND_IMPORT_KEY) headers['X-KLARIO-IMPORT-KEY'] = GEMINI_BACKEND_IMPORT_KEY;
+  if (GEMINI_BACKEND_IMPORT_KEY) headers['X-KLOVIO-IMPORT-KEY'] = GEMINI_BACKEND_IMPORT_KEY;
 
   const res = await fetch(`${GEMINI_BACKEND_URL}/imports/statement/parse-gemini`, {
     method: 'POST',

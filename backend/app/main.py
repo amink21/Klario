@@ -1,5 +1,5 @@
 """
-Klario import API: one-and-done PDF statement parsing.
+Klovio import API: one-and-done PDF statement parsing.
 No PDF storage; temp file deleted immediately after parse.
 Gemini endpoint: read upload into memory, send to Gemini, return parsed transactions.
 """
@@ -58,7 +58,7 @@ def _check_api_key(x_key: str | None) -> None:
     if not IMPORT_API_KEY:
         return  # no key configured = no auth (dev only)
     if x_key != IMPORT_API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid or missing X-KLARIO-IMPORT-KEY")
+        raise HTTPException(status_code=401, detail="Invalid or missing X-KLOVIO-IMPORT-KEY")
 
 
 @asynccontextmanager
@@ -68,7 +68,7 @@ async def lifespan(app: FastAPI):
     pass
 
 
-app = FastAPI(title="Klario Import API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="Klovio Import API", version="1.0.0", lifespan=lifespan)
 
 origins = [o.strip() for o in CORS_ORIGINS.split(",") if o.strip()] if CORS_ORIGINS != "*" else ["*"]
 app.add_middleware(
@@ -105,14 +105,14 @@ def parse_statement_upload(
     file: UploadFile = File(..., description="PDF statement file"),
     source: str | None = Form(None),
     timezone: str | None = Form(None),
-    x_klario_import_key: str | None = Header(None, alias="X-KLARIO-IMPORT-KEY"),
+    x_klovio_import_key: str | None = Header(None, alias="X-KLOVIO-IMPORT-KEY"),
 ):
     """
     Upload a PDF statement; server parses it and returns transactions for client review.
     PDF is not stored; temp file is deleted immediately after parsing.
     """
     _check_rate_limit(request.client.host if request.client else "unknown")
-    _check_api_key(x_klario_import_key)
+    _check_api_key(x_klovio_import_key)
 
     temp_path = None
     try:
@@ -139,7 +139,7 @@ async def parse_statement_gemini(
     request: Request,
     file: UploadFile = File(..., description="PDF bank statement"),
     timezone: str = Form("America/Montreal"),
-    x_klario_import_key: str | None = Header(None, alias="X-KLARIO-IMPORT-KEY"),
+    x_klovio_import_key: str | None = Header(None, alias="X-KLOVIO-IMPORT-KEY"),
 ):
     """
     Upload a PDF statement; server sends it to Gemini and returns Supabase-ready transactions.
@@ -147,7 +147,7 @@ async def parse_statement_gemini(
     """
     request_id = str(uuid.uuid4())[:8]
     _check_rate_limit(request.client.host if request.client else "unknown")
-    _check_api_key(x_klario_import_key)
+    _check_api_key(x_klovio_import_key)
 
     # Content type: allow pdf or octet-stream
     ct = (file.content_type or "").lower()
@@ -204,14 +204,14 @@ def _brief_cache_key(payload: dict) -> tuple[str, str]:
 async def daily_brief(
     request: Request,
     body: DailyBriefRequest,
-    x_klario_import_key: str | None = Header(None, alias="X-KLARIO-IMPORT-KEY"),
+    x_klovio_import_key: str | None = Header(None, alias="X-KLOVIO-IMPORT-KEY"),
 ):
     """
     Generate morning brief using Gemini. API key is read from server env (GEMINI_API_KEY or GOOGLE_API_KEY on Render).
     Responses are cached per calendar day per payload to avoid hitting Gemini rate limits on repeated opens.
     """
     _check_rate_limit(request.client.host if request.client else "unknown")
-    _check_api_key(x_klario_import_key)
+    _check_api_key(x_klovio_import_key)
 
     payload = body.model_dump()
     cache_key = _brief_cache_key(payload)

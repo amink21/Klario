@@ -1,4 +1,4 @@
--- Klario (Life App) – Supabase schema
+-- Klovio (Life App) – Supabase schema
 -- Same pattern as Folion: RLS, user_id on every table, indexes.
 -- Run in Supabase SQL Editor (Dashboard → SQL Editor → New query).
 

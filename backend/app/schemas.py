@@ -3,7 +3,7 @@ from typing import Any, Literal, get_args
 
 from pydantic import BaseModel, Field, field_validator
 
-# Categories matching Klario app
+# Categories matching Klovio app
 Category = Literal[
     "Food", "Transport", "Subscriptions", "Insurance", "Health",
     "Utilities", "Housing", "Entertainment", "Other"

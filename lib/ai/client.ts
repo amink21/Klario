@@ -1,5 +1,5 @@
 /**
- * Centralized AI client for Klario via OpenRouter.
+ * Centralized AI client for Klovio via OpenRouter.
  * - API key from EXPO_PUBLIC_OPENROUTER_API_KEY (dev only). Do NOT hardcode.
  * - OpenRouter: https://openrouter.ai/docs/quickstart (unified API, same as OpenAI format).
  * - Override with EXPO_PUBLIC_OPENROUTER_BASE_URL for a backend proxy.

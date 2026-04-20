@@ -27,7 +27,7 @@ import {
 } from "@/lib/quickAddLinking";
 
 const BACK_TAP_STEPS_BODY =
-  "Settings → Accessibility → Touch → Back Tap → Triple Tap → Quick Add to Klario";
+  "Settings → Accessibility → Touch → Back Tap → Triple Tap → Quick Add to Klovio";
 
 export default function QuickAddSetupScreen() {
   const router = useRouter();
@@ -107,7 +107,7 @@ export default function QuickAddSetupScreen() {
             <View style={[styles.card, { backgroundColor: theme.surface }]}>
               <Text style={[styles.stepTitle, { color: theme.text }]}>1) Install Shortcut</Text>
               <Text style={[styles.body, { color: theme.textTertiary }]}>
-                Adds a &quot;Quick Add to Klario&quot; shortcut to your Shortcuts app.
+                Adds a &quot;Quick Add to Klovio&quot; shortcut to your Shortcuts app.
               </Text>
               <TouchableOpacity
                 style={[styles.primaryButton, { backgroundColor: theme.tint, marginTop: spacing.md }]}
@@ -165,7 +165,7 @@ export default function QuickAddSetupScreen() {
                 </Text>
               </TouchableOpacity>
               <Text style={[styles.body, { color: theme.textTertiary }]}>
-                After installing the shortcut, you can say &quot;Hey Siri, Quick Add to Klario&quot; and
+                After installing the shortcut, you can say &quot;Hey Siri, Quick Add to Klovio&quot; and
                 then speak your entry (e.g. &quot;coffee 5 dollars today&quot;).
               </Text>
             </View>

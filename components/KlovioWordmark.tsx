@@ -15,7 +15,7 @@ type Props = {
   fontSize?: number;
 };
 
-export function KlarioWordmark({ color = NEUTRAL_900, fontSize = 22 }: Props) {
+export function KlovioWordmark({ color = NEUTRAL_900, fontSize = 22 }: Props) {
   return (
     <Text
       style={[
@@ -23,7 +23,7 @@ export function KlarioWordmark({ color = NEUTRAL_900, fontSize = 22 }: Props) {
         { color, fontSize, letterSpacing: LETTER_SPACING_TIGHT },
       ]}
     >
-      klario
+      klovio
     </Text>
   );
 }

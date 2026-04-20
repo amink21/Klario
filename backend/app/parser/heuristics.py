@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 from typing import Literal
 
-# Categories matching Klario app
+# Categories matching Klovio app
 Category = Literal[
     "Food", "Transport", "Subscriptions", "Insurance", "Health",
     "Utilities", "Housing", "Entertainment", "Other"

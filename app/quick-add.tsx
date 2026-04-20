@@ -1,5 +1,5 @@
 /**
- * Deep link: klario://quick-add?text=...
+ * Deep link: klovio://quick-add?text=...
  * Runs smart input pipeline, shows success toast, navigates to Money or Today/Items by intent.
  */
 import React, { useEffect, useState } from 'react';

@@ -24,7 +24,7 @@ def save_temp_pdf(file: UploadFile) -> str:
     Returns path to the temp file. Caller must call cleanup_temp_file when done.
     """
     validate_pdf_upload(file)
-    fd, path = tempfile.mkstemp(suffix=".pdf", prefix="klario_import_")
+    fd, path = tempfile.mkstemp(suffix=".pdf", prefix="klovio_import_")
     try:
         os.close(fd)
         total = 0

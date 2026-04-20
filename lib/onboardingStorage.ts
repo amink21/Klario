@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const KEY_HAS_ONBOARDED = 'klario_has_onboarded';
+const KEY_HAS_ONBOARDED = 'klovio_has_onboarded';
 
 export async function getHasOnboarded(): Promise<boolean> {
   try {

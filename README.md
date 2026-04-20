@@ -1,4 +1,4 @@
-# Klario
+# Klovio
 
 A calm, modern **life & money** app: track spending, reminders, subscriptions, and get a daily morning brief. Built with Expo (React Native), Supabase, and an optional FastAPI backend for AI-powered PDF statement import.
 
@@ -71,8 +71,8 @@ Used when running `npx expo start` and when building with EAS (if not overridden
 |----------|----------|-------------|
 | `EXPO_PUBLIC_SUPABASE_URL` | Yes (if using Supabase) | Supabase project URL |
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Yes (if using Supabase) | Supabase anon key |
-| `EXPO_PUBLIC_IMPORT_API_URL` | For PDF import | Backend base URL (e.g. `https://klario.onrender.com`) |
-| `EXPO_PUBLIC_IMPORT_API_KEY` | Optional | Sent as `X-KLARIO-IMPORT-KEY` if backend has `IMPORT_API_KEY` set |
+| `EXPO_PUBLIC_IMPORT_API_URL` | For PDF import | Backend base URL (e.g. `https://klovio.onrender.com`) |
+| `EXPO_PUBLIC_IMPORT_API_KEY` | Optional | Sent as `X-KLOVIO-IMPORT-KEY` if backend has `IMPORT_API_KEY` set |
 
 - **Local dev:** Put these in `.env` and restart Expo after changes: `npx expo start -c`.
 - **TestFlight / EAS:** Set `EXPO_PUBLIC_IMPORT_API_URL` (and others) in `eas.json` under the build profile `env`, or in EAS Dashboard → Project → Environment variables, so the built app has the correct backend URL.
@@ -85,7 +85,7 @@ Set these in **Render Dashboard → Environment** (or in a backend `.env` when r
 |----------|----------|-------------|
 | `OPENROUTER_API_KEY` | For PDF import | OpenRouter API key (PDF uses OpenRouter Gemini 2.5 Flash) |
 | `GEMINI_API_KEY` or `GOOGLE_API_KEY` | For morning brief | Used only for the daily brief AI endpoint |
-| `IMPORT_API_KEY` | Optional | If set, app must send same value as `X-KLARIO-IMPORT-KEY` |
+| `IMPORT_API_KEY` | Optional | If set, app must send same value as `X-KLOVIO-IMPORT-KEY` |
 | `MAX_UPLOAD_MB` | Optional | Max PDF size in MB (default 15) |
 | `RATE_LIMIT_PER_MINUTE` | Optional | Per-IP limit (default 10) |
 | `CORS_ORIGINS` | Optional | Comma-separated origins; `*` for allow all |
@@ -128,7 +128,7 @@ Set `OPENROUTER_API_KEY` (and optionally `GEMINI_API_KEY`) in `backend/.env` or 
    ```json
    "production": {
      "autoIncrement": true,
-     "env": { "EXPO_PUBLIC_IMPORT_API_URL": "https://klario.onrender.com" }
+     "env": { "EXPO_PUBLIC_IMPORT_API_URL": "https://klovio.onrender.com" }
    }
    ```
 
