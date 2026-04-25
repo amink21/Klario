@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Klovio",
-    "slug": "klovio",
+    "slug": "klario",
     "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/bear-favicon.jpg",
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.amin123786.klovio",
+      "bundleIdentifier": "com.amin123786.klario",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false

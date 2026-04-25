@@ -20,7 +20,7 @@ export type VersionCheckResult =
   | { updateAvailable: true; storeUrl: string; storeVersion: string }
   | { updateAvailable: false };
 
-const IOS_BUNDLE_ID = Constants.expoConfig?.ios?.bundleIdentifier ?? 'com.amin123786.klovio';
+const IOS_BUNDLE_ID = Constants.expoConfig?.ios?.bundleIdentifier ?? 'com.amin123786.klario';
 
 /** Fetch your app's App Store page URL from iTunes Lookup (iOS only). Returns null if not found or on Android. */
 export async function getAppStoreUrl(): Promise<{ storeUrl: string; storeVersion: string } | null> {
