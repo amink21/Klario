@@ -7,7 +7,7 @@
  * - POST /imports/statement/parse-gemini (PDF statement import)
  *
  * In the app, set EXPO_PUBLIC_IMPORT_API_URL to your backend URL
- * (e.g. https://klovio.onrender.com). Do not set EXPO_PUBLIC_GOOGLE_API_KEY or
+ * (e.g. https://klario.onrender.com). Do not set EXPO_PUBLIC_GOOGLE_API_KEY or
  * GEMINI_API_KEY in the app .env.
  */
 
@@ -27,4 +27,4 @@ export function isGeminiBackendAvailable(): boolean {
 
 /** Message to show when backend is not configured. */
 export const GEMINI_BACKEND_REQUIRED_MESSAGE =
-  'Set EXPO_PUBLIC_IMPORT_API_URL in .env to your Render URL (e.g. https://klovio.onrender.com). Add GEMINI_API_KEY or GOOGLE_API_KEY in Render environment variables.';
+  'Set EXPO_PUBLIC_IMPORT_API_URL in .env to your Render URL (e.g. https://klario.onrender.com). Add GEMINI_API_KEY or GOOGLE_API_KEY in Render environment variables.';

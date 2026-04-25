@@ -313,7 +313,7 @@ Migrations add: morning_brief_time, daily/weekly cadence, default_remind_days_be
 ### 8.1 Environment variables (app)
 
 - **EXPO_PUBLIC_SUPABASE_URL**, **EXPO_PUBLIC_SUPABASE_ANON_KEY**: Supabase.
-- **EXPO_PUBLIC_IMPORT_API_URL**: Backend base (e.g. https://klovio.onrender.com).
+- **EXPO_PUBLIC_IMPORT_API_URL**: Backend base (e.g. https://klario.onrender.com).
 - **EXPO_PUBLIC_IMPORT_API_KEY**: Optional; sent as X-KLOVIO-IMPORT-KEY.
 - **EXPO_PUBLIC_PDF_EXTRACT_URL**: Optional PDF-extract service.
 - **EXPO_PUBLIC_OPENROUTER_API_KEY**, **EXPO_PUBLIC_OPENROUTER_BASE_URL**: Dev Smart Input; not for production.

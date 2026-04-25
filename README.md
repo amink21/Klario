@@ -71,7 +71,7 @@ Used when running `npx expo start` and when building with EAS (if not overridden
 |----------|----------|-------------|
 | `EXPO_PUBLIC_SUPABASE_URL` | Yes (if using Supabase) | Supabase project URL |
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Yes (if using Supabase) | Supabase anon key |
-| `EXPO_PUBLIC_IMPORT_API_URL` | For PDF import | Backend base URL (e.g. `https://klovio.onrender.com`) |
+| `EXPO_PUBLIC_IMPORT_API_URL` | For PDF import | Backend base URL (e.g. `https://klario.onrender.com`) |
 | `EXPO_PUBLIC_IMPORT_API_KEY` | Optional | Sent as `X-KLOVIO-IMPORT-KEY` if backend has `IMPORT_API_KEY` set |
 
 - **Local dev:** Put these in `.env` and restart Expo after changes: `npx expo start -c`.
@@ -128,7 +128,7 @@ Set `OPENROUTER_API_KEY` (and optionally `GEMINI_API_KEY`) in `backend/.env` or 
    ```json
    "production": {
      "autoIncrement": true,
-     "env": { "EXPO_PUBLIC_IMPORT_API_URL": "https://klovio.onrender.com" }
+     "env": { "EXPO_PUBLIC_IMPORT_API_URL": "https://klario.onrender.com" }
    }
    ```
 
